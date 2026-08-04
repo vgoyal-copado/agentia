@@ -1,0 +1,19 @@
+<template>
+    <template lwc:if={showBanner}>
+        <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">
+            <span class="slds-assistive-text">error</span>
+            <span class="slds-icon_container slds-icon-utility-error slds-m-right_x-small" title="Error">
+                <lightning-icon
+                    icon-name="utility:error"
+                    alternative-text="Error"
+                    size="x-small"
+                    variant="inverse"
+                ></lightning-icon>
+            </span>
+            <h2>
+                This high-priority Case has been open for 48 or more hours without an update. Review the
+                status and take action to avoid an SLA breach.
+            </h2>
+        </div>
+    </template>
+</template>

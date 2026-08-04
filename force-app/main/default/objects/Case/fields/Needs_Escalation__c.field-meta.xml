@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Needs_Escalation__c</fullName>
+    <description>Flags open Medium, High, or Critical Cases that have not been updated in 24 or more hours.</description>
+    <formula>AND(
+NOT(IsClosed),
+OR(
+ISPICKVAL(Priority, &apos;Medium&apos;),
+ISPICKVAL(Priority, &apos;High&apos;),
+ISPICKVAL(Priority, &apos;Critical&apos;)
+),
+(NOW() - LastModifiedDate) * 24 &gt;= 24
+)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <inlineHelpText>Checked when this open Case has Medium, High, or Critical priority and has not been updated in 24 or more hours.</inlineHelpText>
+    <label>Needs Escalation</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

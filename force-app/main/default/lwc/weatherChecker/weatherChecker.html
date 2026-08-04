@@ -1,0 +1,41 @@
+<template>
+    <lightning-card title="Check Weather" icon-name="utility:world">
+        <div class="slds-p-around_medium">
+            <lightning-input
+                label="City"
+                value={city}
+                onchange={handleCityChange}
+                required
+            ></lightning-input>
+            <lightning-input
+                class="slds-m-top_small"
+                label="Country Code (optional)"
+                value={countryCode}
+                onchange={handleCountryCodeChange}
+                maxlength="2"
+            ></lightning-input>
+            <div class="slds-m-top_medium">
+                <lightning-button
+                    variant="brand"
+                    label="Get Weather"
+                    onclick={handleGetWeather}
+                    disabled={isLoading}
+                ></lightning-button>
+            </div>
+
+            <template lwc:if={errorMessage}>
+                <div class="slds-m-top_medium slds-text-color_error">{errorMessage}</div>
+            </template>
+
+            <template lwc:if={hasWeather}>
+                <div class="slds-m-top_medium slds-box slds-theme_shade">
+                    <p><strong>{weather.cityName}</strong></p>
+                    <p>Temperature: {weather.temperatureCelsius} °C</p>
+                    <p>Condition: {weather.condition}</p>
+                    <p>Humidity: {weather.humidity}%</p>
+                    <p>Wind Speed: {weather.windSpeedMetersPerSecond} m/s</p>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

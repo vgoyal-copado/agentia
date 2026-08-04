@@ -23,6 +23,8 @@ yarn-error.log*
 
 # Dependency directories
 node_modules/
+.agentia/
+.vscode/
 
 # ApexPMD cache
 .pmdCache

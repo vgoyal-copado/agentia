@@ -1,0 +1,19 @@
+<template>
+    <template lwc:if={showReminder}>
+        <div class="slds-notify slds-notify_alert slds-alert_warning" role="alert">
+            <span class="slds-assistive-text">warning</span>
+            <span class="slds-icon_container slds-icon-utility-warning slds-m-right_x-small" title="Warning">
+                <lightning-icon
+                    icon-name="utility:warning"
+                    alternative-text="Warning"
+                    size="x-small"
+                    variant="inverse"
+                ></lightning-icon>
+            </span>
+            <h2>
+                This open Opportunity has no Next Step and has not been updated in 7 or more days. Add a next
+                step to keep the deal moving.
+            </h2>
+        </div>
+    </template>
+</template>

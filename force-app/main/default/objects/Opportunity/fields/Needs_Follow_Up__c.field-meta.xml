@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Needs_Follow_Up__c</fullName>
+    <description>Flags open Opportunities with a blank Next Step that have not been updated in 7 or more days.</description>
+    <formula>AND(
+NOT(IsClosed),
+ISBLANK(NextStep),
+TODAY() - DATEVALUE(LastModifiedDate) &gt;= 7
+)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <inlineHelpText>Checked when this open Opportunity has no Next Step and has not been updated in 7 or more days.</inlineHelpText>
+    <label>Needs Follow Up</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

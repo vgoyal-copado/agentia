@@ -65,13 +65,14 @@ Cursor MCP (start from repo root):
 
 1. **Clean working tree**, then `agentia_work_set` / `agentia work set <id>` → branch `feature/<story-name>`.
 2. Implement Salesforce metadata under `force-app/`.
-3. Commit only when the user asks.
-4. **Exit gate — dependency check** (once, before push/submit/done or reporting complete): see [Metadata dependencies](#metadata-dependencies).
-5. `agentia_work_push` / `agentia work push` — only after dependency gate passes.
+3. **Deploy to source org** — once all changes are ready to commit, deploy to the source org before committing. Dry-run first, then deploy. See [Deploy to source org](#deploy-to-source-org).
+4. **Exit gate — dependency check** (once, after source deploy, before commit/push/submit/done or reporting complete): see [Metadata dependencies](#metadata-dependencies).
+5. Commit only when the user asks — after deploy and dependency gate pass.
+6. `agentia_work_push` / `agentia work push` — only after dependency gate passes.
 
 ### 5. Submit, done, monitor
 
-1. Run dependency check if not already done.
+1. Confirm deploy and dependency check already passed (re-run only if deploy or retrieved deps changed).
 2. `agentia_work_status` / `agentia work status` — story + related jobs.
 3. `agentia work submit` — validation (`validate=true`). **Confirm with user first.**
 4. On failure: `agentia job list` → `job get` → `job log get`.
@@ -81,9 +82,9 @@ Cursor MCP (start from repo root):
 
 ## Global rules
 
-- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` for metadata deploy only.
+- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` for **source-org deploy** only (required before commit; see [Deploy to source org](#deploy-to-source-org)).
 - Pipeline/job commands need `organizationId` + `userId` from config `context`.
-- Metadata dependency/compare commands need `pipelineId`, `sourceOrgId`, `sourceCredential` from config.
+- Metadata dependency/compare commands need `pipelineId`, `sourceOrgId`, `sourceCredential` from config, plus `targetOrgId` from the pipeline connection (see [Metadata dependencies](#metadata-dependencies)).
 - Git-backed commands (`work set`, `work push`, `work submit`, `work done`) operate on the **current repo**; MCP must start from repo root. `work set` and `work push` require a **clean tracked working tree**.
 - After `work set`, omit work-item ID on `work get`, `work update`, `work status` — active item is cached locally.
 - **Confirm first:** `work delete`, `work submit`, `work done`, `job kill`, promotion conflict resolve/unresolve.
@@ -93,11 +94,41 @@ Cursor MCP (start from repo root):
 
 ---
 
+## Deploy to source org
+
+**When:** once all implementation changes are ready to commit — after coding, before commit and dependency analysis.
+
+**Target:** Development Org alias from the config table (`nvijaydxdevhub_dev`), which maps to `context.sourceOrgId`.
+
+**How:**
+
+```sh
+# Validate first
+sf project deploy start --dry-run --source-dir force-app --target-org nvijaydxdevhub_dev --wait 30 --json
+
+# Deploy on success
+sf project deploy start --source-dir force-app --target-org nvijaydxdevhub_dev --wait 30 --json
+```
+
+Use `--metadata` or a manifest when the change set is narrow. Fix deploy errors before proceeding. Do not commit until the source-org deploy succeeds.
+
+---
+
 ## Metadata dependencies
 
-**When:** once before work ends — any request to work on/implement/build/start a story. Not at entry.
+**When:** once after changes are **deployed to the source org** and before work ends (commit/push/submit/done). Not at entry.
 
-**How** (CLI; MCP lacks `--from-changes`):
+**Prerequisite:** [Deploy to source org](#deploy-to-source-org) must succeed first so dependency analysis runs against live org metadata, not just local files.
+
+**Resolve destination org:** from the pipeline connection whose source environment matches the story's source org (`defaults.environment` or `context.sourceOrgId`):
+
+```sh
+agentia pipeline connection list --pipeline-id <context.pipelineId> --json
+```
+
+Use `destinationEnvironment.orgId` as `targetOrgId` (e.g. dev1 → Staging).
+
+**How** (CLI; MCP lacks `--from-changes` and `--target-org-id`):
 
 ```sh
 agentia metadata dependency list \
@@ -105,10 +136,13 @@ agentia metadata dependency list \
   --pipeline-id <context.pipelineId> \
   --source-org-id <context.sourceOrgId> \
   --source-credential-id <context.sourceCredential> \
+  --target-org-id <destinationOrgId> \
   --json
 ```
 
-**If missing deps:** list them, retrieve into `force-app/` (`agentia metadata content get`), include in commits when asked. Re-run only if retrieval added files. Do not push/submit/done with org-only deps unless the user explicitly accepts documented gaps.
+This compares **source org** (where changes are deployed) against **destination org** (next environment in the pipeline).
+
+**If missing deps:** list them, retrieve into `force-app/` (`agentia metadata content get`), redeploy to source org, then re-run dependency analysis. Include retrieved files in commits when asked. Do not push/submit/done with org-only deps unless the user explicitly accepts documented gaps.
 
 **Common misses:** Apex referenced by LWC/controllers, custom metadata + Default records, named/external credentials, permission sets and labels referenced by UI.
 
@@ -144,7 +178,7 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 **Do not use to build a story:**
 
 - **Git commit history** — no `git log`, `git show`, `git checkout <commit/branch> --`, or copying metadata from prior branches/commits to infer scope or reuse implementation.
-- `sf` **CLI** — no `sf project retrieve start`, `sf project deploy start`, `sf data `*, or other `sf` commands for story context, dependency discovery, or implementation scaffolding.
+- `sf` **CLI** — no `sf project retrieve start`, `sf data `*, or other `sf` commands for story context, dependency discovery, or implementation scaffolding. **Exception:** required [source-org deploy](#deploy-to-source-org) before commit.
 - **Copado CLI** — no `copado `* commands for work items, metadata, pipeline actions, or story context.
 
 **Use instead (Agentia MCP or** `agentia … --json`**):**
@@ -155,7 +189,9 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 | Create or update a story          | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                       |
 | Branch & active story             | `agentia_work_set` / `agentia work set <id> --json`                                                                      |
 | Metadata in org / repo            | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json` |
-| Missing dependencies              | `agentia metadata dependency list --from-changes … --json`                                                               |
+| Deploy to source org              | `sf project deploy start` (dry-run, then deploy) — required before commit                                                |
+| Missing dependencies              | `agentia metadata dependency list --from-changes --target-org-id … --json` (after source deploy)                         |
+| Pipeline destination org          | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                           |
 | Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                       |
 
-Read the story from Agentia, implement from its specs, retrieve missing metadata via Agentia, and push through Agentia. Only use `sf` when the user explicitly asks for a local deploy/retrieve outside the Agentia flow.
+Read the story from Agentia, implement from its specs, deploy to source org, run cross-org dependency analysis, retrieve missing metadata via Agentia, and push through Agentia. Use `sf` only for the required source-org deploy (and when the user explicitly asks for other local deploy/retrieve).

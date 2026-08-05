@@ -64,12 +64,13 @@ Cursor MCP (start from repo root):
 ### 4. Implement
 
 1. **Clean working tree**, then `agentia_work_set` / `agentia work set <id>` → branch `feature/<story-name>`.
-2. Implement Salesforce metadata under `force-app/`.
-3. **Deploy to source org** — once all changes are ready, deploy to the source org before committing. Dry-run first, then deploy. See [Deploy to source org](#deploy-to-source-org).
-4. **Stage changes** — after deploy succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
-5. **Exit gate — dependency check** (once, after staging, before commit/push/submit/done or reporting complete): see [Metadata dependencies](#metadata-dependencies).
-6. Commit only when the user asks — after deploy and dependency gate pass.
-7. `agentia_work_push` / `agentia work push` — only after dependency gate passes.
+2. **Existing org metadata** — before creating or editing a file locally, check whether it already exists in the source org (`agentia_metadata_list` / `agentia metadata list --json`). If it does, retrieve it with `agentia_metadata_content_get` / `agentia metadata content get --json` and modify the retrieved copy. Do not recreate from scratch.
+3. Implement Salesforce metadata under `force-app/`.
+4. **Deploy to source org** — once all changes are ready, deploy to the source org before committing. Dry-run first, then deploy. See [Deploy to source org](#deploy-to-source-org).
+5. **Stage changes** — after deploy succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
+6. **Exit gate — dependency check** (once, after staging, before commit/push/submit/done or reporting complete): see [Metadata dependencies](#metadata-dependencies).
+7. Commit only when the user asks — after deploy and dependency gate pass.
+8. `agentia_work_push` / `agentia work push` — only after dependency gate passes.
 
 ### 5. Submit, done, monitor
 
@@ -84,6 +85,7 @@ Cursor MCP (start from repo root):
 ## Global rules
 
 - **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` for **source-org deploy** only (required before commit; see [Deploy to source org](#deploy-to-source-org)).
+- **Prefer org source of truth** — if metadata already exists in the source org, retrieve it via Agentia and edit that file; do not author a new local copy from scratch.
 - Pipeline/job commands need `organizationId` + `userId` from config `context`.
 - Metadata dependency/compare commands need `pipelineId`, `sourceOrgId`, `sourceCredential` from config, plus `targetOrgId` from the pipeline connection (see [Metadata dependencies](#metadata-dependencies)).
 - Git-backed commands (`work set`, `work push`, `work submit`, `work done`) operate on the **current repo**; MCP must start from repo root. `work set` and `work push` require a **clean tracked working tree**.

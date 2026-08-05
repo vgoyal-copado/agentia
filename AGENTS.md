@@ -16,24 +16,24 @@ Always invoke commands as `agentia …` (on PATH).
 
 ### Work-item and pipeline inputs
 
-| Field | ID / value | CLI / MCP flag | Notes |
-| --- | --- | --- | --- |
-| Organization ID | `00DdN000011i71VUAQ` | `--organization-id` / `organizationId` | Required for pipeline & job commands |
-| User ID | `005dN00000DA8PpQAL` | `--user-id` / `userId` | Required for pipeline & job commands |
-| Username | `nvijay+aug2026@copado.com` | — | Authenticated Copado user |
-| SF org alias | `AgentforceHeadless` | — | Local Salesforce CLI alias |
-| Project ID | `a15hm000000OFE1AAO` | `--project` | Agentia Pipeline |
-| Source environment ID | `a0chm000000CesvAAC` | `--source-environment` | Default dev sandbox (`dev1`) |
-| **Source credential ID** | `a11hm000000lAK5AAM` | `--source-credential` | Default credential for `dev1`; used on `work create` and metadata commands |
-| **Release ID** | `_FILL_ME_` | `--release-id` | Target release for new user stories |
-| Pipeline ID | `a0Whm000000AtJNEA0` | `--pipeline-id` | Metadata deps/compare, promotions, jobs |
-| Source org ID | `00DOv00000HQc6HMAT` | `--source-org-id` | Org tied to default source credential |
-| Record type ID | `_FILL_ME_` | `--record-type` | Omit if project default applies |
-| Team ID | `a1hhm0000006v3dAAA` | `--team` | Also set via `project default set` |
-| Sprint ID | `a1Yhm0000005DhNEAU` | `--sprint-id` | Also set via `project default set` |
-| Epic ID | `a0ehm000000kcv7AAA` | `--epic` | Optional parent epic |
-| Feature ID | `a01hm0000052NLpAAM` | `--feature` | Optional parent feature |
-| Assign to me | `true` | `--assign-me` | Sets assignee to current user |
+| Field                    | ID / value                  | CLI / MCP flag                         | Notes                                                                      |
+| ------------------------ | --------------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| Organization ID          | `00DdN000011i71VUAQ`        | `--organization-id` / `organizationId` | Required for pipeline & job commands                                       |
+| User ID                  | `005dN00000DA8PpQAL`        | `--user-id` / `userId`                 | Required for pipeline & job commands                                       |
+| Username                 | `nvijay+aug2026@copado.com` | —                                      | Authenticated Copado user                                                  |
+| SF org alias             | `AgentforceHeadless`        | —                                      | Local Salesforce CLI alias                                                 |
+| Project ID               | `a15hm000000OFE1AAO`        | `--project`                            | Agentia Pipeline                                                           |
+| Source environment ID    | `a0chm000000CesvAAC`        | `--source-environment`                 | Default dev sandbox (`dev1`)                                               |
+| **Source credential ID** | `a11hm000000lAK5AAM`        | `--source-credential`                  | Default credential for `dev1`; used on `work create` and metadata commands |
+| **Release ID**           | `_FILL_ME_`                 | `--release-id`                         | Target release for new user stories                                        |
+| Pipeline ID              | `a0Whm000000AtJNEA0`        | `--pipeline-id`                        | Metadata deps/compare, promotions, jobs                                    |
+| Source org ID            | `00DOv00000HQc6HMAT`        | `--source-org-id`                      | Org tied to default source credential                                      |
+| Record type ID           | `_FILL_ME_`                 | `--record-type`                        | Omit if project default applies                                            |
+| Team ID                  | `a1hhm0000006v3dAAA`        | `--team`                               | Also set via `project default set`                                         |
+| Sprint ID                | `a1Yhm0000005DhNEAU`        | `--sprint-id`                          | Also set via `project default set`                                         |
+| Epic ID                  | `a0ehm000000kcv7AAA`        | `--epic`                               | Optional parent epic                                                       |
+| Feature ID               | `a01hm0000052NLpAAM`        | `--feature`                            | Optional parent feature                                                    |
+| Assign to me             | `true`                      | `--assign-me`                          | Sets assignee to current user                                              |
 
 Bold rows (**Source credential ID**, **Release ID**) are the most common gaps — update them when onboarding a new repo or pipeline.
 
@@ -71,21 +71,19 @@ When creating a user story, merge **project defaults** (`agentia project default
 
 ### Resolving missing IDs
 
-| Need | Command |
-| --- | --- |
+| Need                          | Command                                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Credential for an environment | `agentia environment get <environment-id> --json` → `credentials[].id` (prefer `defaultCredential: true`) |
-| Pipeline ID | `agentia pipeline list --user-id 005dN00000DA8PpQAL --organization-id 00DdN000011i71VUAQ --json` |
-| Source org ID | From `environment get` → `orgId`, or credential → `orgId` |
-| Release ID | Copado project Releases tab, or `agentia project get <project-id> --json` |
-| Record type ID | Copado project settings, or copy from an existing story via `agentia work get <id> --json` |
+| Pipeline ID                   | `agentia pipeline list --user-id 005dN00000DA8PpQAL --organization-id 00DdN000011i71VUAQ --json`          |
+| Source org ID                 | From `environment get` → `orgId`, or credential → `orgId`                                                 |
+| Release ID                    | Copado project Releases tab, or `agentia project get <project-id> --json`                                 |
+| Record type ID                | Copado project settings, or copy from an existing story via `agentia work get <id> --json`                |
 
 After resolving, update both this table and `.agentia/config.json`.
 
 ---
 
 ## Setup (human / CI — not the agent)
-
-
 
 ```sh
 
@@ -103,37 +101,21 @@ agentia auth set --cicd <api-key> --region na --crt <pat>
 
 ```
 
-
-
 Cursor MCP:
 
-
-
 ```json
-
 {
-
   "mcpServers": {
-
     "agentia": {
-
       "command": "agentia",
 
       "args": ["mcp", "start"]
-
     }
-
   }
-
 }
-
 ```
 
-
-
 Project defaults for `work create` (project, environment, team, sprint) — see [Project configuration](#project-configuration) for IDs and [`.agentia/config.json`](.agentia/config.json) for persistence:
-
-
 
 ```sh
 
@@ -143,17 +125,11 @@ agentia project default get --json
 
 ```
 
-
-
 Pipeline / job commands use org and user IDs from [Project configuration](#project-configuration). MCP: pass the same values as `organizationId` and `userId`.
 
 ---
 
-
-
 ## Global rules
-
-
 
 - Almost all commands support `--json` → `{ status, result }` (or `{ error }`). Prefer JSON; do not parse tables/spinners.
 
@@ -171,15 +147,93 @@ Pipeline / job commands use org and user IDs from [Project configuration](#proje
 
 - **Large user stories:** before implementing any work item, assess size per [Large / epic user stories](#10-large--epic-user-stories). If it qualifies as an epic, **inform the user and propose a breakdown** — do not implement the full scope in one pass unless the user explicitly overrides.
 
+- **Metadata dependencies:** run a dependency check **before starting implementation** and again **before every git commit** that includes metadata changes. See [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check).
 
+### Mandatory: Metadata dependency check
+
+**Always check metadata dependencies** when working on Salesforce metadata — not only at promotion time.
+
+| When | Required action |
+
+| --- | --- |
+
+| **Before implementation** (after `work set`, before writing code) | Identify metadata the story references or will call (from specs, existing org metadata, or parent stories). Run dependency analysis and ensure prerequisites are in the repo or will be retrieved in the same change set. |
+
+| **Before every git commit** | Re-run dependency analysis on the full staged change set. **Do not commit** until missing dependencies are retrieved/included or the user explicitly accepts the gap. |
+
+| **Before `work push` / `work submit` / `work done`** | Confirm the branch change set is dependency-complete for the pipeline target environment. |
+
+**How to run the check**
+
+Use cached IDs from [Project configuration](#project-configuration) and `.agentia/config.json` (`context.pipelineId`, `context.sourceOrgId`, `context.sourceCredential`).
+
+1. **Change-set analysis** (preferred when local files exist or are staged):
+
+```sh
+
+agentia metadata dependency list \
+
+  --from-changes \
+
+  --base-ref origin/main \
+
+  --pipeline-id <pipelineId> \
+
+  --source-org-id <sourceOrgId> \
+
+  --source-credential-id <sourceCredentialId> \
+
+  --target-org-id <targetOrgId> \
+
+  --json
+
+```
+
+2. **Single-component analysis** (preferred **before implementation** when specs reference existing metadata not yet in the repo — e.g. an Apex class the new code will call):
+
+```sh
+
+agentia metadata dependency list \
+
+  --metadata-name <ApiName> \
+
+  --metadata-type <MetadataType> \
+
+  --pipeline-id <pipelineId> \
+
+  --source-org-id <sourceOrgId> \
+
+  --source-credential-id <sourceCredentialId> \
+
+  --json
+
+```
+
+MCP equivalent: `agentia_metadata_dependency_list` with the same IDs (use `metadataName` / `metadataType` for single-component checks).
+
+**When dependencies are missing**
+
+1. List each missing metadata item (type + API name) and why it is required.
+
+2. **Retrieve from the source org** and add to the repo (`sf project retrieve start` or `agentia metadata content get` → write files under `force-app/`).
+
+3. Include retrieved dependency files in the **same commit** as the dependent metadata — do not commit the consumer alone.
+
+4. If the user declines retrieval, **stop and warn** that promotion/deploy to environments without those dependencies will fail.
+
+**Common gaps agents miss**
+
+- Apex classes referenced by new controllers/LWC but not in the branch (e.g. `WeatherService` required by `WeatherDisplayController`).
+
+- Custom metadata types, fields, and **Default** records referenced in Apex.
+
+- Named credentials / external credentials used in `callout:` endpoints.
+
+- Permission sets, custom labels, or flows referenced by new UI — verify via dependency output, not guesswork.
 
 ### Mandatory: Agentia for ALM (no Salesforce CLI bypass)
 
-
-
 **Always use Agentia** for Copado ALM / work-item operations. Do **not** substitute raw Salesforce CLI calls.
-
-
 
 | Task | Use | Do **not** use |
 
@@ -201,11 +255,7 @@ Pipeline / job commands use org and user IDs from [Project configuration](#proje
 
 | Mark done / promote | `agentia work done` (confirm first; or MCP `agentia_work_done`) | Copado UI promote action |
 
-
-
 Additional rules:
-
-
 
 1. **Before creating work items**, read [Project configuration](#project-configuration) and run `agentia project default get --json`. If defaults are missing, set them with `agentia project default set` (see `.agentia/config.json`).
 
@@ -215,19 +265,11 @@ Additional rules:
 
 4. **MCP vs shell:** prefer MCP work tools when exposed by `agentia mcp start`; otherwise shell with `agentia … --json`.
 
-
-
 ---
-
-
 
 ## Full CLI command inventory
 
-
-
 ### `auth` — credentials (keychain)
-
-
 
 | Command | Purpose |
 
@@ -237,11 +279,7 @@ Additional rules:
 
 | `agentia auth get` | Show stored credentials (`--cicd` / `--crt` selectors). **Do not echo secrets to the user.** |
 
-
-
 ### `user`
-
-
 
 | Command | Purpose |
 
@@ -249,11 +287,7 @@ Additional rules:
 
 | `agentia user get [ID]` | Get user by ID; defaults to authenticated user (`me`) |
 
-
-
 ### `project`
-
-
 
 | Command | Purpose |
 
@@ -269,11 +303,7 @@ Additional rules:
 
 | `agentia project default unset` | Clear selected defaults |
 
-
-
 Defaults map into user-story create payload:
-
-
 
 | Default key | Work field |
 
@@ -293,11 +323,7 @@ Defaults map into user-story create payload:
 
 | `assignMe` | `assignee` (current user) |
 
-
-
 ### `environment`
-
-
 
 | Command | Purpose |
 
@@ -315,11 +341,7 @@ Defaults map into user-story create payload:
 
 | `agentia environment auth web login ID` | Browser web login for credential (`--credentialid`, `--port`, `--timeout`) |
 
-
-
 ### `pipeline`
-
-
 
 | Command | Purpose |
 
@@ -331,11 +353,7 @@ Defaults map into user-story create payload:
 
 | `agentia pipeline connection list` | List connections (`--pipeline-id` optional) |
 
-
-
 ### `work` — user stories
-
-
 
 | Command | Purpose |
 
@@ -361,25 +379,15 @@ Defaults map into user-story create payload:
 
 | `agentia work status [ID]` | Work item status plus related job executions; ID defaults to active work item from `work set` |
 
-
-
 Important `work get` fields for agents:
-
-
 
 - Specs: `functionalRequirements`, `technicalSpecifications`, `acceptanceCriteria`, `asA` / `wantTo` / `soThat`
 
 - Context: `project`, `projectName`, `sourceEnvironment`, `sourceEnvironmentName`, `sourceCredential`, `sourceOrgId`, `pipelineId`, `status`, `components`, branches/release fields
 
-
-
 Mutation flags (create/update) include: `--title`, `--status`, `--project`, `--source-environment`, `--source-credential`, `--functional-requirements`, `--technical-specifications`, `--acceptance-criteria`, `--as-a`, `--want-to`, `--so-that`, `--assignee`, `--owner-id`, `--team`, `--sprint-id`, `--epic`, `--feature`, `--theme`, `--priority`, `--planned-points`, `--actual-points`, `--release-id`, `--record-type`, `--close-date`, `--cancellation-reason`, `--excluded-from-cbm` / `--no-excluded-from-cbm`.
 
-
-
 ### `job` — job executions
-
-
 
 | Command | Purpose |
 
@@ -399,11 +407,7 @@ Mutation flags (create/update) include: `--title`, `--status`, `--project`, `--s
 
 | `agentia job kill ID` | Cancel (**confirm first**) |
 
-
-
 ### `metadata`
-
-
 
 | Command | Purpose |
 
@@ -425,11 +429,7 @@ Mutation flags (create/update) include: `--title`, `--status`, `--project`, `--s
 
 | `agentia metadata refresh status` | Refresh job status (`--job-id`) |
 
-
-
 ### `promotion`
-
-
 
 | Command | Purpose |
 
@@ -447,11 +447,7 @@ Mutation flags (create/update) include: `--title`, `--status`, `--project`, `--s
 
 | `agentia promotion conflict unresolve ID -p ID` | Undo resolution — **confirm** |
 
-
-
 ### `mcp`
-
-
 
 | Command | Purpose |
 
@@ -459,29 +455,17 @@ Mutation flags (create/update) include: `--title`, `--status`, `--project`, `--s
 
 | `agentia mcp start` | Long-running MCP server over stdio (no `--json`) |
 
-
-
 ### Built-ins
-
-
 
 - `agentia help [COMMAND]`
 
 - `agentia plugins`
 
-
-
 ---
-
-
 
 ## MCP tools (prefer these)
 
-
-
 JSON-safe; secrets redacted. Start `agentia mcp start` from the repo root when using Git-backed work tools.
-
-
 
 | Topic | Tools |
 
@@ -505,11 +489,7 @@ JSON-safe; secrets redacted. Start `agentia mcp start` from the repo root when u
 
 | Metadata | `agentia_metadata_list`, `_content_get`, `_content_compare`, `_index_compare`, `_dependency_list`, `_refresh_run`, `_refresh_status`, `_refresh_deleted` |
 
-
-
 ### MCP notes
-
-
 
 - Pipeline and job tools require `userId` and `organizationId` (gateway `x-user-id` / `x-organization-id` headers). Use cached values from [Project configuration](#project-configuration).
 
@@ -523,29 +503,17 @@ JSON-safe; secrets redacted. Start `agentia mcp start` from the repo root when u
 
 - Metadata dependency MCP tool takes explicit `metadataName` / `metadataType`; CLI `--from-changes`, `--stdin`, and `--file` variants are richer for change-set analysis.
 
-
-
 ### CLI-only today (use shell + `--json`)
-
-
 
 - `environment auth web login` (browser-based credential login)
 
 - Metadata dependency `--from-changes`, `--base-ref`, `--stdin`, and `--file` input modes
 
-
-
 ---
-
-
 
 ## Recommended agent playbooks
 
-
-
 ### 1) Orient
-
-
 
 1. Read [Project configuration](#project-configuration) and `.agentia/config.json` (`defaults` + `context`)
 
@@ -555,19 +523,13 @@ JSON-safe; secrets redacted. Start `agentia mcp start` from the repo root when u
 
 4. `agentia pipeline connection list --pipeline-id <pipelineId>` when you need branch/env mapping
 
-
-
 ### 2) Create a user story (work item)
-
-
 
 1. Read [Project configuration](#project-configuration) and `agentia project default get --json`
 
 2. If needed, `agentia project default set --project <id> --environment <id> --assign-me`
 
 3. Create with **`agentia work create --json`** (never `sf data create record`). Pull IDs from config `context` and `defaults`:
-
-
 
 ```sh
 
@@ -599,19 +561,13 @@ agentia work create \
 
 ```
 
-
-
 4. Omit flags already covered by project defaults (`--project`, `--source-environment`, `--team`, `--sprint-id`, `--epic`, `--feature`, `--assignee` when `--assign-me` is set). Always include `--source-credential` from `context.sourceCredential`. Include `--release-id` when `context.releaseId` is set.
 
 5. On success, report the returned story ID/name from JSON `result` — do not re-query via `sf`.
 
 6. If the requested scope spans multiple metadata layers or is clearly an end-to-end feature, create it as a **parent/epic story** and document a **Suggested Child Story Breakdown** in `functionalRequirements` and/or `technicalSpecifications` (see [Large / epic user stories](#10-large--epic-user-stories)).
 
-
-
 ### 3) Understand a user story
-
-
 
 1. `agentia work list` (e.g. assigned-to-me / name / status) → pick ID
 
@@ -623,27 +579,23 @@ agentia work create \
 
 5. Note `sourceEnvironment`, `sourceOrgId`, `sourceCredential`, `pipelineId` for later metadata/job calls
 
-
+6. From specs, list metadata the story **consumes** (existing Apex, objects, credentials, etc.) — these are dependency-check inputs for step 1 of playbook 4
 
 ### 4) Start work + implement
 
-
-
 1. Ensure a clean tracked working tree, then `agentia work set <id>` (or MCP `agentia_work_set`) — checks out `feature/<user-story-name>` from the Copado base branch
 
-2. Make implementation changes and commit to Git when asked
+2. **Dependency check (before coding):** for each metadata item the story will consume or extend, run [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check). Retrieve/include missing prerequisites **before** writing dependent metadata.
 
-3. `agentia metadata dependency list --from-changes --base-ref origin/main --pipeline-id … --source-org-id … --source-credential-id … --target-org-id … --json`
+3. Make implementation changes
 
-4. If missing dependencies are detected and not included in the change set: notify as missing on destination and offer to retrieve/include them
+4. **Dependency check (before commit):** when the user asks for a commit (or before staging metadata for commit), run `--from-changes` against `origin/main`. If missing dependencies are detected and not included in the change set: retrieve/include them, re-run the check, then commit. **Never commit metadata that depends on org-only components without those dependencies in the same change set.**
 
-5. `agentia work push` (or MCP `agentia_work_push`) to register commits with Copado before submit/done
+5. Commit to Git when asked — only after step 4 passes or the user explicitly accepts documented gaps
 
-
+6. `agentia work push` (or MCP `agentia_work_push`) to register commits with Copado before submit/done
 
 ### 5) Submit, done, and monitor
-
-
 
 1. `agentia work status` (or MCP `agentia_work_status`) — story status plus related jobs; omit ID when active work item is set
 
@@ -653,25 +605,11 @@ agentia work create \
 
 4. `agentia work done` — push if needed, then promote to the next environment (`validate=false`). **Confirm with the user first.**
 
-
-
 ### 6) Dependency check only (no work set)
 
-
-
-Use when the feature branch is already checked out and Copado registration is handled separately:
-
-
-
-1. `agentia metadata dependency list --from-changes --base-ref origin/main --pipeline-id … --source-org-id … --source-credential-id … --target-org-id … --json`
-
-2. If missing dependencies are detected and not included in the change set: notify as missing on destination and offer to retrieve/include them
-
-
+Use when the feature branch is already checked out and Copado registration is handled separately. Follow [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check) — same rules apply before commit and before push/submit/done.
 
 ### 7) Job lifecycle
-
-
 
 1. `agentia job list --parent <userStoryId> …` (or name/status/context filters)
 
@@ -681,11 +619,7 @@ Use when the feature branch is already checked out and Copado registration is ha
 
 4. `agentia job run` / `resume` / `pause` / `kill` only with clear intent; confirm kill
 
-
-
 ### 8) Metadata impact / compare
-
-
 
 1. `agentia metadata list` → filter type/name
 
@@ -695,11 +629,7 @@ Use when the feature branch is already checked out and Copado registration is ha
 
 4. Refresh index with `agentia metadata refresh *` when index is stale
 
-
-
 ### 9) Promotion / conflicts
-
-
 
 1. `agentia promotion list` / `agentia promotion get`
 
@@ -709,23 +639,13 @@ Use when the feature branch is already checked out and Copado registration is ha
 
 4. `agentia promotion conflict resolve` only with explicit approval (`--mode auto|manual`)
 
-
-
 ### 10) Large / epic user stories
-
-
 
 Use this playbook when creating, reviewing, or being asked to **implement** a user story.
 
-
-
 #### When a story is "too big"
 
-
-
 Treat a user story as a **parent/epic** (not a single sprint item) when **any** of the following apply:
-
-
 
 | Signal | Threshold |
 
@@ -743,15 +663,9 @@ Treat a user story as a **parent/epic** (not a single sprint item) when **any** 
 
 | Cross-layer dependency | Changes require a strict deploy order across layers (objects → Apex → flows → UI → security) |
 
-
-
 #### Mandatory: inform the user before implementing
 
-
-
 When the user asks to **work on**, **implement**, **build**, or **start** a story that meets the criteria above:
-
-
 
 1. **Do not begin implementation** on the full epic in one pass.
 
@@ -773,19 +687,11 @@ When the user asks to **work on**, **implement**, **build**, or **start** a stor
 
 4. Only implement after the user confirms a **single, scoped child story** (or explicitly overrides and wants the full epic attempted — rare; warn about promotion/review risk).
 
-
-
 Example user-facing message:
-
-
 
 > **US-0000036** is an epic-level story (8+ metadata types, 21 points, 10 acceptance criteria). I recommend splitting it into 8 child stories before implementation. Suggested first slice: **US-001 — Custom fields + Health_Score_History__c**. Should I create the child stories in Copado, or start with US-001?
 
-
-
 #### Breaking down a large story
-
-
 
 1. `agentia work get <parent-id>` — read full specs
 
@@ -811,11 +717,7 @@ Example user-facing message:
 
 5. Report created child story IDs/names to the user
 
-
-
 #### Child story sizing guide
-
-
 
 | Child story should include | Child story should NOT include |
 
@@ -827,17 +729,11 @@ Example user-facing message:
 
 | 3–8 planned points | Entire platform / multi-app delivery |
 
-| Clear deploy boundary | "And also build the dashboard and reports" unless that *is* the slice |
-
-
+| Clear deploy boundary | "And also build the dashboard and reports" unless that _is_ the slice |
 
 ---
 
-
-
 ## Output contract
-
-
 
 - Success: JSON with `status: 0` and `result`
 

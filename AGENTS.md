@@ -81,7 +81,7 @@ Cursor MCP (start from repo root):
 
 ## Global rules
 
-- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` for metadata deploy/retrieve only.
+- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` for metadata deploy only.
 - Pipeline/job commands need `organizationId` + `userId` from config `context`.
 - Metadata dependency/compare commands need `pipelineId`, `sourceOrgId`, `sourceCredential` from config.
 - Git-backed commands (`work set`, `work push`, `work submit`, `work done`) operate on the **current repo**; MCP must start from repo root. `work set` and `work push` require a **clean tracked working tree**.

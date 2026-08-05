@@ -147,29 +147,25 @@ Pipeline / job commands use org and user IDs from [Project configuration](#proje
 
 - **Large user stories:** before implementing any work item, assess size per [Large / epic user stories](#10-large--epic-user-stories). If it qualifies as an epic, **inform the user and propose a breakdown** — do not implement the full scope in one pass unless the user explicitly overrides.
 
-- **Metadata dependencies:** whenever the user asks you to **work on**, **implement**, **build**, or **start** a user story / work item / ticket, run the full dependency lifecycle in [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check) — check at entry, before every metadata commit, and **again before work ends** (retrieve and add anything still missing).
+- **Metadata dependencies:** whenever the user asks you to **work on**, **implement**, **build**, or **start** a user story / work item / ticket, run **one** dependency check before work ends — see [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check). Retrieve and add any missing dependencies to the change set before push, submit, done, or reporting implementation complete.
 
 ### Mandatory: Metadata dependency check
 
 **Always check metadata dependencies** when working on Salesforce metadata — not only at promotion time.
 
-**Entry trigger:** any request to work on a user story, work item, or ticket (by ID, name, or “implement this story”) starts the dependency workflow — even if the user does not mention dependencies explicitly.
+**Exit trigger:** any request to work on a user story, work item, or ticket (by ID, name, or “implement this story”) must end with a dependency check — even if the user does not mention dependencies explicitly. Do **not** run a dependency check at entry; run it **once** before work ends.
 
 | When | Required action |
 
 | --- | --- |
 
-| **When asked to work on a story** (after `work get` / `work set`, before writing code) | Read specs and list metadata the story references or will call. Run dependency analysis (single-component and/or change-set as appropriate). Ensure prerequisites are in the repo or will be retrieved in the same change set **before** implementation begins. |
-
-| **Before every git commit** (metadata changes) | Re-run dependency analysis on the full staged change set. **Do not commit** until missing dependencies are retrieved/included or the user explicitly accepts the gap. |
-
-| **Before work ends** (mandatory exit gate — before `work push`, `work submit`, `work done`, or reporting implementation complete) | Re-run `--from-changes` on the **full branch change set** vs `origin/main`. **Retrieve and add** every missing dependency to the repo. Re-run until the change set is dependency-complete or the user explicitly accepts documented gaps. **Do not finish work** with org-only dependencies still missing from the branch. |
+| **Before work ends** (mandatory exit gate — before `work push`, `work submit`, `work done`, or reporting implementation complete) | Run `--from-changes` **once** on the **full branch change set** vs `origin/main`. **Retrieve and add** every missing dependency to the repo. Re-run only if retrieval added new files, until the change set is dependency-complete or the user explicitly accepts documented gaps. **Do not finish work** with org-only dependencies still missing from the branch. |
 
 **How to run the check**
 
 Use cached IDs from [Project configuration](#project-configuration) and `.agentia/config.json` (`context.pipelineId`, `context.sourceOrgId`, `context.sourceCredential`).
 
-1. **Change-set analysis** (preferred when local files exist or are staged):
+1. **Change-set analysis** (use at exit — when local branch changes exist):
 
 ```sh
 
@@ -191,27 +187,7 @@ agentia metadata dependency list \
 
 ```
 
-2. **Single-component analysis** (preferred **before implementation** when specs reference existing metadata not yet in the repo — e.g. an Apex class the new code will call):
-
-```sh
-
-agentia metadata dependency list \
-
-  --metadata-name <ApiName> \
-
-  --metadata-type <MetadataType> \
-
-  --pipeline-id <pipelineId> \
-
-  --source-org-id <sourceOrgId> \
-
-  --source-credential-id <sourceCredentialId> \
-
-  --json
-
-```
-
-MCP equivalent: `agentia_metadata_dependency_list` with the same IDs (use `metadataName` / `metadataType` for single-component checks).
+MCP equivalent: `agentia_metadata_dependency_list` with the same IDs.
 
 **When dependencies are missing**
 
@@ -219,9 +195,9 @@ MCP equivalent: `agentia_metadata_dependency_list` with the same IDs (use `metad
 
 2. **Retrieve from the source org** and add to the repo (`sf project retrieve start` or `agentia metadata content get` → write files under `force-app/`).
 
-3. Include retrieved dependency files in the **same commit** as the dependent metadata — do not commit the consumer alone.
+3. Include retrieved dependency files in the **same commit** as the dependent metadata when the user asks for a commit — do not leave retrieved dependencies uncommitted.
 
-4. At the **before work ends** gate, missing dependencies are **not optional** — retrieve and add them unless the user explicitly declines after seeing the list.
+4. Missing dependencies at exit are **not optional** — retrieve and add them unless the user explicitly declines after seeing the list.
 
 5. If the user declines retrieval, **stop and warn** that promotion/deploy to environments without those dependencies will fail; do not push, submit, or mark work done.
 
@@ -583,9 +559,7 @@ agentia work create \
 
 5. Note `sourceEnvironment`, `sourceOrgId`, `sourceCredential`, `pipelineId` for later metadata/job calls
 
-6. From specs, list metadata the story **consumes** (existing Apex, objects, credentials, etc.) — these are dependency-check inputs for playbook 4
-
-7. If the user asked to **work on / implement / build / start** this story, proceed to playbook 4 — dependency checks are mandatory for that request
+6. If the user asked to **work on / implement / build / start** this story, proceed to playbook 4
 
 ### 4) Start work + implement
 
@@ -593,21 +567,17 @@ Triggered whenever the user asks you to work on a user story, work item, or tick
 
 1. Ensure a clean tracked working tree, then `agentia work set <id>` (or MCP `agentia_work_set`) — checks out `feature/<user-story-name>` from the Copado base branch
 
-2. **Dependency check (entry — before coding):** for each metadata item the story will consume or extend, run [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check). Retrieve/include missing prerequisites **before** writing dependent metadata.
+2. Make implementation changes
 
-3. Make implementation changes
+3. Commit to Git when asked
 
-4. **Dependency check (before commit):** when the user asks for a commit (or before staging metadata for commit), run `--from-changes` against `origin/main`. If missing dependencies are detected and not included in the change set: retrieve/include them, re-run the check, then commit. **Never commit metadata that depends on org-only components without those dependencies in the same change set.**
+4. **Dependency check (exit — before work ends):** run [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check) **once** on the full branch change set. **Retrieve and add** any missing dependencies to the repo. Re-run only if retrieval added files, until dependency-complete. Commit retrieved dependencies when the user asks for a commit. **Do not** push, submit, report implementation complete, or mark the story done until this gate passes or the user explicitly accepts documented gaps.
 
-5. Commit to Git when asked — only after step 4 passes or the user explicitly accepts documented gaps
-
-6. **Dependency check (exit — before work ends):** run `--from-changes` on the full branch change set. **Retrieve and add** any dependencies still missing from the repo. Re-run until dependency-complete. Commit retrieved dependencies when the user asks for a commit (step 4 applies). **Do not** push, submit, report implementation complete, or mark the story done until this gate passes or the user explicitly accepts documented gaps.
-
-7. `agentia work push` (or MCP `agentia_work_push`) to register commits with Copado — only after step 6 passes
+5. `agentia work push` (or MCP `agentia_work_push`) to register commits with Copado — only after step 4 passes
 
 ### 5) Submit, done, and monitor
 
-1. **Dependency check (exit gate):** re-run `--from-changes` and retrieve/add any missing dependencies before any pipeline action (same rules as playbook 4 step 6)
+1. **Dependency check (exit gate):** if not already run in playbook 4 step 4, run `--from-changes` once and retrieve/add any missing dependencies before any pipeline action
 
 2. `agentia work status` (or MCP `agentia_work_status`) — story status plus related jobs; omit ID when active work item is set
 
@@ -619,7 +589,7 @@ Triggered whenever the user asks you to work on a user story, work item, or tick
 
 ### 6) Dependency check only (no work set)
 
-Use when the feature branch is already checked out and Copado registration is handled separately. Follow [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check) — same entry, commit, and **before work ends** rules apply.
+Use when the feature branch is already checked out and Copado registration is handled separately. Follow [Mandatory: Metadata dependency check](#mandatory-metadata-dependency-check) — run **once** before work ends.
 
 ### 7) Job lifecycle
 

@@ -1,0 +1,95 @@
+<template>
+  <lightning-card title="Weather Display" icon-name="utility:world">
+    <div class="slds-p-around_medium">
+      <div class="slds-grid slds-wrap slds-gutters">
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+          <lightning-input
+            label="City"
+            value={city}
+            onchange={handleCityChange}
+            placeholder="e.g. London"
+            required
+          ></lightning-input>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+          <lightning-input
+            label="Country Code (optional)"
+            value={countryCode}
+            onchange={handleCountryChange}
+            placeholder="e.g. GB"
+            maxlength="2"
+          ></lightning-input>
+        </div>
+      </div>
+
+      <div class="slds-m-top_medium">
+        <lightning-button
+          variant="brand"
+          label="Search"
+          onclick={handleSearch}
+          disabled={isLoading}
+        ></lightning-button>
+      </div>
+
+      <template lwc:if={isLoading}>
+        <div class="slds-is-relative slds-m-top_large slds-p-vertical_large">
+          <lightning-spinner
+            alternative-text="Loading weather"
+            size="medium"
+          ></lightning-spinner>
+        </div>
+      </template>
+
+      <template lwc:if={hasError}>
+        <div class="slds-m-top_medium" role="alert">
+          <div
+            class="slds-notify slds-notify_alert slds-alert_error"
+            part="alert"
+          >
+            <span class="slds-assistive-text">error</span>
+            <h2>{errorMessage}</h2>
+          </div>
+        </div>
+      </template>
+
+      <template lwc:if={hasWeatherResult}>
+        <article class="slds-card slds-m-top_medium weather-result-card">
+          <div class="slds-card__header slds-grid">
+            <header
+              class="slds-media slds-media_center slds-has-flexi-truncate"
+            >
+              <div class="slds-media__body">
+                <h2 class="slds-card__header-title">
+                  <span class="slds-text-heading_small"
+                    >{weatherResult.cityName}</span
+                  >
+                </h2>
+                <p class="slds-text-body_regular slds-text-color_weak">
+                  {weatherResult.condition}
+                </p>
+              </div>
+            </header>
+          </div>
+          <div class="slds-card__body slds-card__body_inner">
+            <dl class="slds-list_horizontal slds-wrap">
+              <dt class="slds-item_label slds-text-color_weak slds-truncate">
+                Temperature
+              </dt>
+              <dd class="slds-item_detail slds-truncate">
+                {temperatureDisplay}
+              </dd>
+              <dt class="slds-item_label slds-text-color_weak slds-truncate">
+                Humidity
+              </dt>
+              <dd class="slds-item_detail slds-truncate">{humidityDisplay}</dd>
+              <dt class="slds-item_label slds-text-color_weak slds-truncate">
+                Wind Speed
+              </dt>
+              <dd class="slds-item_detail slds-truncate">{windSpeedDisplay}</dd>
+            </dl>
+          </div>
+        </article>
+      </template>
+    </div>
+  </lightning-card>
+</template>

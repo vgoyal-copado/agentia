@@ -65,7 +65,7 @@ Cursor MCP (start from repo root):
 
 1. **Clean working tree**, then `agentia_work_set` / `agentia work set <id>` → branch `feature/<story-name>`.
 2. **Existing org metadata** — before creating or editing a file locally, check whether it already exists in the source org (`agentia_metadata_list` / `agentia metadata list --json`). If it does, retrieve it with `agentia_metadata_content_get` / `agentia metadata content get --json` and modify the retrieved copy. Do not recreate from scratch.
-3. Implement Salesforce metadata under `force-app/`.
+3. Implement Salesforce metadata under `force-app/`. Author files directly or retrieve existing org metadata via Agentia — never use `sf template generate` or other `sf` commands to scaffold metadata.
 4. **Deploy to source org** — once all changes are ready, deploy to the source org before committing. Dry-run first, then deploy. See [Deploy to source org](#deploy-to-source-org).
 5. **Stage changes** — after deploy succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
 6. **Exit gate — dependency check** (once, after staging, before commit/push/submit/done or reporting complete): see [Metadata dependencies](#metadata-dependencies).
@@ -84,7 +84,7 @@ Cursor MCP (start from repo root):
 
 ## Global rules
 
-- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` for **source-org deploy** only (required before commit; see [Deploy to source org](#deploy-to-source-org)).
+- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` **only** for [source-org deploy](#deploy-to-source-org) (`sf project deploy start`). No other `sf` commands — including `sf template generate`, `sf project retrieve start`, `sf data *`, or any other `sf` subcommand.
 - **Prefer org source of truth** — if metadata already exists in the source org, retrieve it via Agentia and edit that file; do not author a new local copy from scratch.
 - Pipeline/job commands need `organizationId` + `userId` from config `context`.
 - Metadata dependency/compare commands need `pipelineId`, `sourceOrgId`, `sourceCredential` from config, plus `targetOrgId` from the pipeline connection (see [Metadata dependencies](#metadata-dependencies)).
@@ -102,6 +102,8 @@ Cursor MCP (start from repo root):
 **When:** once all implementation changes are ready — after coding, before staging, commit, and dependency analysis.
 
 **Target:** Development Org alias from the config table (`nvijaydxdevhub_dev`), which maps to `context.sourceOrgId`.
+
+**This is the only permitted use of the `sf` CLI.** Do not run any other `sf` command.
 
 **How:**
 
@@ -181,7 +183,7 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 **Do not use to build a story:**
 
 - **Git commit history** — no `git log`, `git show`, `git checkout <commit/branch> --`, or copying metadata from prior branches/commits to infer scope or reuse implementation.
-- `sf` **CLI** — no `sf project retrieve start`, `sf data `*, or other `sf` commands for story context, dependency discovery, or implementation scaffolding. **Exception:** required [source-org deploy](#deploy-to-source-org) before commit.
+- `sf` **CLI** — no `sf` commands except `sf project deploy start` for [source-org deploy](#deploy-to-source-org). Never use `sf template generate`, `sf project retrieve start`, `sf data *`, or any other `sf` subcommand.
 - **Copado CLI** — no `copado `* commands for work items, metadata, pipeline actions, or story context.
 
 **Use instead (Agentia MCP or** `agentia … --json`**):**
@@ -197,4 +199,4 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 | Pipeline destination org          | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                           |
 | Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                       |
 
-Read the story from Agentia, implement from its specs, deploy to source org, stage changes, run cross-org dependency analysis (before commit), retrieve missing metadata via Agentia, and push through Agentia. Use `sf` only for the required source-org deploy (and when the user explicitly asks for other local deploy/retrieve).
+Read the story from Agentia, implement from its specs, deploy to source org, stage changes, run cross-org dependency analysis (before commit), retrieve missing metadata via Agentia, and push through Agentia. Use `sf project deploy start` only — no other `sf` commands.

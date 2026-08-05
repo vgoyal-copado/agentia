@@ -1,19 +1,20 @@
 # AGENTS.md — Development flow
 
-Salesforce ALM via **Agentia** (Copado). Prefer **Agentia MCP tools** when available. If MCP is unavailable, use **`agentia … --json`** as fallback — never substitute `sf data *` for Copado work items.
+Salesforce ALM via **Agentia** (Copado). Prefer **Agentia MCP tools** when available. If MCP is unavailable, use `agentia … --json` as fallback — never substitute `sf data `* for Copado work items.
 
-**Before any ALM or metadata command:** read [`.agentia/config.json`](.agentia/config.json) (`defaults` + `context`). Use those IDs; do not re-resolve unless auth or org setup changed.
+**Before any ALM or metadata command:** read `[.agentia/config.json](.agentia/config.json)` (`defaults` + `context`). Use those IDs; do not re-resolve unless auth or org setup changed.
 
 ---
 
 ## Config not in `.agentia/config.json`
 
-| Item               | Value                                   |
-| ------------------ | --------------------------------------- |
-| CLI                | `@copado/agentia-cli@0.26.0-alpha.0`    |
-| Copado username    | `nvijay+aug2026@copado.com`             |
-| Local SF org alias | `AgentforceHeadless`                    |
-| Base branch        | `main` (see `lastBaseBranch` in config) |
+| Item                    | Value                                   |
+| ----------------------- | --------------------------------------- |
+| CLI                     | `@copado/agentia-cli@0.26.0-alpha.0`    |
+| Copado username         | `nvijay@copado.com`                     |
+| Copado Org SF org alias | `AgentforceHeadless-Testbackend`        |
+| Base branch             | `main` (see `lastBaseBranch` in config) |
+| Development Org alias   | `nvijaydxdevhub_dev`                    |
 
 **Gaps to fill in config when missing:**
 
@@ -107,7 +108,7 @@ agentia metadata dependency list \
   --json
 ```
 
-**If missing deps:** list them, retrieve into `force-app/` (`sf project retrieve start` or `agentia metadata content get`), include in commits when asked. Re-run only if retrieval added files. Do not push/submit/done with org-only deps unless the user explicitly accepts documented gaps.
+**If missing deps:** list them, retrieve into `force-app/` (`agentia metadata content get`), include in commits when asked. Re-run only if retrieval added files. Do not push/submit/done with org-only deps unless the user explicitly accepts documented gaps.
 
 **Common misses:** Apex referenced by LWC/controllers, custom metadata + Default records, named/external credentials, permission sets and labels referenced by UI.
 
@@ -138,15 +139,15 @@ Config tracks the last story: `lastWorkItemId`, `lastWorkItem`, `lastBaseBranch`
 
 ## Build stories with Agentia only
 
-When creating, understanding, or implementing a user story, use **Agentia MCP tools** or **`agentia … --json`** as the sole ALM and metadata source. Do **not** use git commit history, `sf` CLI, or Copado CLI to build a story.
+When creating, understanding, or implementing a user story, use **Agentia MCP tools** or `agentia … --json` as the sole ALM and metadata source. Do **not** use git commit history, `sf` CLI, or Copado CLI to build a story.
 
 **Do not use to build a story:**
 
 - **Git commit history** — no `git log`, `git show`, `git checkout <commit/branch> --`, or copying metadata from prior branches/commits to infer scope or reuse implementation.
-- **`sf` CLI** — no `sf project retrieve start`, `sf project deploy start`, `sf data *`, or other `sf` commands for story context, dependency discovery, or implementation scaffolding.
-- **Copado CLI** — no `copado *` commands for work items, metadata, pipeline actions, or story context.
+- `sf` **CLI** — no `sf project retrieve start`, `sf project deploy start`, `sf data `*, or other `sf` commands for story context, dependency discovery, or implementation scaffolding.
+- **Copado CLI** — no `copado `* commands for work items, metadata, pipeline actions, or story context.
 
-**Use instead (Agentia MCP or `agentia … --json`):**
+**Use instead (Agentia MCP or** `agentia … --json`**):**
 
 | Need                              | Agentia command / MCP tool                                                                                               |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |

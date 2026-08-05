@@ -2,6 +2,8 @@
 
 Headless CICD CLI for Salesforce ALM / DevOps agent workflows.
 
+**Target CLI:** `@copado/agentia-cli@0.26.0-alpha.0` (`agentia --version`).
+
 Prefer **MCP tools** (`agentia mcp start`) when available; otherwise shell with **`--json`**.
 
 Always invoke commands as `agentia …` (on PATH).
@@ -87,6 +89,8 @@ After resolving, update both this table and `.agentia/config.json`.
 
 ```sh
 
+npm install -g @copado/agentia-cli@0.26.0-alpha.0
+
 agentia auth set --cicd <api-key> --region na|emea|emea2|apac|apac2
 
 # or
@@ -157,11 +161,15 @@ Pipeline / job commands use org and user IDs from [Project configuration](#proje
 
 - Metadata inspect/compare/deps typically need `--pipeline-id`, `--source-org-id`, `--source-credential-id` (+ target/branch as needed).
 
-- Never print secrets from `auth get`. Do not expose keychain material.
+- Never print secrets from `auth get` / `agentia_auth_get`. Do not expose keychain material.
 
-- Confirm before destructive ops: `job kill`, `work delete`, conflict resolve/unresolve.
+- Confirm before destructive or pipeline-triggering ops: `job kill`, `work delete`, `work submit`, `work done`, conflict resolve/unresolve.
 
-- **Large user stories:** before implementing any work item, assess size per [Large / epic user stories](#8-large--epic-user-stories). If it qualifies as an epic, **inform the user and propose a breakdown** — do not implement the full scope in one pass unless the user explicitly overrides.
+- **Git-backed work commands** (`work set`, `work push`, `work submit`, `work done`) operate on the **current Git repository** (CLI cwd or MCP server process cwd). They require a **clean tracked working tree** for `work set` and `work push`; `work submit` / `work done` push unpushed commits when the branch is ahead of `origin`. Start the MCP server from the intended repo root.
+
+- **Active work item:** after `work set`, `work get`, `work update`, and `work status` accept an omitted ID and default to the last work item set locally.
+
+- **Large user stories:** before implementing any work item, assess size per [Large / epic user stories](#10-large--epic-user-stories). If it qualifies as an epic, **inform the user and propose a breakdown** — do not implement the full scope in one pass unless the user explicitly overrides.
 
 
 
@@ -177,13 +185,21 @@ Pipeline / job commands use org and user IDs from [Project configuration](#proje
 
 | --- | --- | --- |
 
-| Create user story / work item | `agentia work create --json` (or MCP `agentia_work_create` when available) | `sf data create record` on `copado__User_Story__c` |
+| Create user story / work item | `agentia work create --json` (or MCP `agentia_work_create`) | `sf data create record` on `copado__User_Story__c` |
 
-| Update user story | `agentia work update <id> --json` (or MCP `agentia_work_update`) | `sf data update record` on `copado__User_Story__c` |
+| Update user story | `agentia work update [id] --json` (or MCP `agentia_work_update`) | `sf data update record` on `copado__User_Story__c` |
 
 | Read user story | `agentia work get` / `agentia work list --json` | `sf data query` / `sf data get record` on Copado work objects |
 
 | Delete user story | `agentia work delete <id>` (confirm first) | `sf data delete record` |
+
+| Start work / feature branch | `agentia work set <id>` (or MCP `agentia_work_set`) | Manual branch checkout + Copado UI |
+
+| Push commits to Copado | `agentia work push` (or MCP `agentia_work_push`) | Manual `git push` + Copado UI |
+
+| Submit for validation | `agentia work submit` (confirm first; or MCP `agentia_work_submit`) | Copado UI promote action |
+
+| Mark done / promote | `agentia work done` (confirm first; or MCP `agentia_work_done`) | Copado UI promote action |
 
 
 
@@ -243,7 +259,9 @@ Additional rules:
 
 | --- | --- |
 
-| `agentia project list` | List projects (`--mine` optional) |
+| `agentia project list` | List projects (`--mine`, `--name` optional) |
+
+| `agentia project get ID` | Get a Copado project by ID (releases, settings) |
 
 | `agentia project default get` | Show defaults (project, environment, team, sprint, epic, feature, assignMe); `--global` |
 
@@ -325,13 +343,23 @@ Defaults map into user-story create payload:
 
 | `agentia work list` | List/filter stories (`--name`, `--title`, `--status`, `--project-id`, `--project-name`, `--assignee-id`, `--assignee-name`, `--owner-id`, `--owner-name`, `--assigned-to-me`, `--owned-by-me`, …) |
 
-| `agentia work get ID` | Full story header + specs + env/pipeline context |
+| `agentia work get [ID]` | Full story header + specs + env/pipeline context; ID defaults to active work item from `work set` |
 
 | `agentia work create` | Create story (mutation flags + project defaults) — **required for new work items** |
 
-| `agentia work update ID` | Update story fields |
+| `agentia work update [ID]` | Update story fields; ID defaults to active work item from `work set` |
 
 | `agentia work delete ID` | Delete story (**confirm first**) |
+
+| `agentia work set ID` | Set active work item; fetch base branch from `origin`, create/checkout `feature/<user-story-name>` (**clean working tree**) |
+
+| `agentia work push` | Push current feature branch to `origin` and register commits with Copado (**clean working tree**, requires prior `work set`) |
+
+| `agentia work submit` | Push when ahead of `origin`, then submit for pipeline quality gates / validation (`validate=true`) — **confirm first** |
+
+| `agentia work done` | Push when ahead of `origin`, then mark done and promote to next environment (`validate=false`) — **confirm first** |
+
+| `agentia work status [ID]` | Work item status plus related job executions; ID defaults to active work item from `work set` |
 
 
 
@@ -360,6 +388,8 @@ Mutation flags (create/update) include: `--title`, `--status`, `--project`, `--s
 | `agentia job list` | List jobs; filters: `--id`, `--status`, `--name`, `--type`, `--parent` (e.g. user story Id), `--context`, `--limit` + pipeline headers |
 
 | `agentia job get ID` | Job + ordered steps (failure detail) |
+
+| `agentia job log get ID` | Raw log output for a job step (`--step` optional; defaults to first step with a result ID) |
 
 | `agentia job run ID` | Run all steps (`--restart` optional) |
 
@@ -449,7 +479,7 @@ Mutation flags (create/update) include: `--title`, `--status`, `--project`, `--s
 
 
 
-JSON-safe; secrets redacted.
+JSON-safe; secrets redacted. Start `agentia mcp start` from the repo root when using Git-backed work tools.
 
 
 
@@ -457,21 +487,41 @@ JSON-safe; secrets redacted.
 
 | --- | --- |
 
-| Environment | `agentia_environment_list`, `_get`, `_create`, `_update` |
+| Auth | `agentia_auth_get`, `agentia_auth_set` |
+
+| Environment | `agentia_environment_list`, `_get`, `_create`, `_update`, `_auth_status` |
 
 | User | `agentia_user_get` |
 
-| Project | `agentia_project_list`, `agentia_project_default_get`, `_set`, `_unset` |
+| Project | `agentia_project_list`, `_get`, `agentia_project_default_get`, `_set`, `_unset` |
 
 | Pipeline | `agentia_pipeline_list`, `_get`, `_connection_list` |
 
-| Work | `agentia_work_list`, `_get`, `_create`, `_update`, `_delete` |
+| Work | `agentia_work_list`, `_get`, `_create`, `_update`, `_delete`, `_set`, `_status`, `_push`, `_submit`, `_done` |
 
-| Job | `agentia_job_list`, `_get`, `_run`, `_resume`, `_pause`, `_kill` |
+| Job | `agentia_job_list`, `_get`, `_log_get`, `_run`, `_resume`, `_pause`, `_kill` |
 
-| Promotion | `agentia_promotion_list`, `_get` |
+| Promotion | `agentia_promotion_list`, `_get`, `_conflict_list`, `_conflict_get`, `_conflict_resolve`, `_conflict_unresolve` |
 
-| Metadata | `agentia_metadata_list`, `_content_get`, `_content_compare`, `_index_compare`, `_dependency_list` |
+| Metadata | `agentia_metadata_list`, `_content_get`, `_content_compare`, `_index_compare`, `_dependency_list`, `_refresh_run`, `_refresh_status`, `_refresh_deleted` |
+
+
+
+### MCP notes
+
+
+
+- Pipeline and job tools require `userId` and `organizationId` (gateway `x-user-id` / `x-organization-id` headers). Use cached values from [Project configuration](#project-configuration).
+
+- `agentia_work_set`, `_push`, `_submit`, and `_done` operate on the MCP server's current Git repository and can fetch, check out, or push to `origin`.
+
+- `agentia_work_get`, `_update`, and `_status` default to the active work item after `agentia_work_set`.
+
+- `agentia_user_get` defaults `id` to `me` for the authenticated user.
+
+- Promotion conflict resolve MCP tool uses `content` for manual mode (CLI uses `--file`).
+
+- Metadata dependency MCP tool takes explicit `metadataName` / `metadataType`; CLI `--from-changes`, `--stdin`, and `--file` variants are richer for change-set analysis.
 
 
 
@@ -479,15 +529,9 @@ JSON-safe; secrets redacted.
 
 
 
-- `auth *`
+- `environment auth web login` (browser-based credential login)
 
-- `environment auth status|web login`
-
-- `metadata refresh *`
-
-- `promotion conflict *` (list/get/resolve/unresolve)
-
-- Dependency `--from-changes` / stdin / file variants are richer on CLI than the MCP dependency tool (MCP takes explicit name/type selections)
+- Metadata dependency `--from-changes`, `--base-ref`, `--stdin`, and `--file` input modes
 
 
 
@@ -561,7 +605,7 @@ agentia work create \
 
 5. On success, report the returned story ID/name from JSON `result` — do not re-query via `sf`.
 
-6. If the requested scope spans multiple metadata layers or is clearly an end-to-end feature, create it as a **parent/epic story** and document a **Suggested Child Story Breakdown** in `functionalRequirements` and/or `technicalSpecifications` (see [Large / epic user stories](#8-large--epic-user-stories)).
+6. If the requested scope spans multiple metadata layers or is clearly an end-to-end feature, create it as a **parent/epic story** and document a **Suggested Child Story Breakdown** in `functionalRequirements` and/or `technicalSpecifications` (see [Large / epic user stories](#10-large--epic-user-stories)).
 
 
 
@@ -571,29 +615,61 @@ agentia work create \
 
 1. `agentia work list` (e.g. assigned-to-me / name / status) → pick ID
 
-2. `agentia work get <id>`
+2. `agentia work get <id>` (or `agentia work set <id>` then `agentia work get`)
 
 3. Read `functionalRequirements` + `technicalSpecifications` (+ acceptance criteria) to decide changes
 
-4. **Assess story size** using [§8 Large / epic user stories](#8-large--epic-user-stories) — if it qualifies, stop and inform the user before writing code
+4. **Assess story size** using [Large / epic user stories](#10-large--epic-user-stories) — if it qualifies, stop and inform the user before writing code
 
 5. Note `sourceEnvironment`, `sourceOrgId`, `sourceCredential`, `pipelineId` for later metadata/job calls
 
 
 
-### 4) Implement + dependency check
+### 4) Start work + implement
 
 
 
-1. Make implementation changes and commit to Git when asked
+1. Ensure a clean tracked working tree, then `agentia work set <id>` (or MCP `agentia_work_set`) — checks out `feature/<user-story-name>` from the Copado base branch
 
-2. `agentia metadata dependency list --from-changes --base-ref origin/main --pipeline-id … --source-org-id … --source-credential-id … --target-org-id … --json`
+2. Make implementation changes and commit to Git when asked
 
-3. If missing dependencies are detected and not included in the change set: notify as missing on destination and offer to retrieve/include them
+3. `agentia metadata dependency list --from-changes --base-ref origin/main --pipeline-id … --source-org-id … --source-credential-id … --target-org-id … --json`
+
+4. If missing dependencies are detected and not included in the change set: notify as missing on destination and offer to retrieve/include them
+
+5. `agentia work push` (or MCP `agentia_work_push`) to register commits with Copado before submit/done
 
 
 
-### 5) Job lifecycle
+### 5) Submit, done, and monitor
+
+
+
+1. `agentia work status` (or MCP `agentia_work_status`) — story status plus related jobs; omit ID when active work item is set
+
+2. `agentia work submit` — push if needed, then run pipeline quality gates (`validate=true`). **Confirm with the user first.**
+
+3. `agentia job list --parent <userStoryId> …` → `agentia job get <id>` → `agentia job log get <id>` for step failures
+
+4. `agentia work done` — push if needed, then promote to the next environment (`validate=false`). **Confirm with the user first.**
+
+
+
+### 6) Dependency check only (no work set)
+
+
+
+Use when the feature branch is already checked out and Copado registration is handled separately:
+
+
+
+1. `agentia metadata dependency list --from-changes --base-ref origin/main --pipeline-id … --source-org-id … --source-credential-id … --target-org-id … --json`
+
+2. If missing dependencies are detected and not included in the change set: notify as missing on destination and offer to retrieve/include them
+
+
+
+### 7) Job lifecycle
 
 
 
@@ -601,11 +677,13 @@ agentia work create \
 
 2. `agentia job get <id>` for step-level failure detail
 
-3. `agentia job run` / `resume` / `pause` / `kill` only with clear intent; confirm kill
+3. `agentia job log get <id> [--step <step-id>]` for raw step logs
+
+4. `agentia job run` / `resume` / `pause` / `kill` only with clear intent; confirm kill
 
 
 
-### 6) Metadata impact / compare
+### 8) Metadata impact / compare
 
 
 
@@ -619,7 +697,7 @@ agentia work create \
 
 
 
-### 7) Promotion / conflicts
+### 9) Promotion / conflicts
 
 
 
@@ -633,7 +711,7 @@ agentia work create \
 
 
 
-### 8) Large / epic user stories
+### 10) Large / epic user stories
 
 
 

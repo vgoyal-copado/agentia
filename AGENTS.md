@@ -133,3 +133,28 @@ Each child: 1–2 metadata layers, 2–4 acceptance criteria, 3–8 points, clea
 ## Active work item
 
 Config tracks the last story: `lastWorkItemId`, `lastWorkItem`, `lastBaseBranch`. Prefer these when continuing work in the same repo session.
+
+---
+
+## Build stories with Agentia only
+
+When creating, understanding, or implementing a user story, use **Agentia MCP tools** or **`agentia … --json`** as the sole ALM and metadata source. Do **not** use git commit history, `sf` CLI, or Copado CLI to build a story.
+
+**Do not use to build a story:**
+
+- **Git commit history** — no `git log`, `git show`, `git checkout <commit/branch> --`, or copying metadata from prior branches/commits to infer scope or reuse implementation.
+- **`sf` CLI** — no `sf project retrieve start`, `sf project deploy start`, `sf data *`, or other `sf` commands for story context, dependency discovery, or implementation scaffolding.
+- **Copado CLI** — no `copado *` commands for work items, metadata, pipeline actions, or story context.
+
+**Use instead (Agentia MCP or `agentia … --json`):**
+
+| Need                              | Agentia command / MCP tool                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Story specs & acceptance criteria | `agentia_work_get` / `agentia work get <id> --json`                                                                      |
+| Create or update a story          | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                       |
+| Branch & active story             | `agentia_work_set` / `agentia work set <id> --json`                                                                      |
+| Metadata in org / repo            | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json` |
+| Missing dependencies              | `agentia metadata dependency list --from-changes … --json`                                                               |
+| Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                       |
+
+Read the story from Agentia, implement from its specs, retrieve missing metadata via Agentia, and push through Agentia. Only use `sf` when the user explicitly asks for a local deploy/retrieve outside the Agentia flow.

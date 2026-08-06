@@ -44,8 +44,21 @@
         </div>
 
         <div class="slds-col slds-size_1-of-1">
-          <p class="slds-text-title_caps slds-text-color_weak">Open Cases</p>
-          <p class="slds-text-body_regular">{openCaseLabel}</p>
+          <p class="slds-text-title_caps slds-text-color_weak">
+            Escalated Cases
+          </p>
+          <template lwc:if={showEscalationWarning}>
+            <div
+              class="slds-notify slds-notify_alert slds-alert_warning slds-m-top_x-small"
+              role="alert"
+            >
+              <span class="slds-assistive-text">warning</span>
+              <h2>{escalatedCaseLabel}</h2>
+            </div>
+          </template>
+          <template lwc:else>
+            <p class="slds-text-body_regular">{escalatedCaseLabel}</p>
+          </template>
         </div>
       </div>
     </template>

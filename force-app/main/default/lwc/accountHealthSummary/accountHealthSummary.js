@@ -1,6 +1,6 @@
 import { LightningElement, api, wire } from "lwc";
 import { getRecord, getFieldValue } from "lightning/uiRecordApi";
-import getOpenCaseCount from "@salesforce/apex/AccountHealthSummaryController.getOpenCaseCount";
+import getEscalatedCaseCount from "@salesforce/apex/AccountHealthSummaryController.getEscalatedCaseCount";
 import CUSTOMER_TIER_FIELD from "@salesforce/schema/Account.Customer_Tier__c";
 import HEALTH_SCORE_FIELD from "@salesforce/schema/Account.Health_Score__c";
 import ACCOUNT_NAME_FIELD from "@salesforce/schema/Account.Name";
@@ -21,19 +21,19 @@ const TIER_VARIANTS = {
 export default class AccountHealthSummary extends LightningElement {
   @api recordId;
 
-  openCaseCount;
+  escalatedCaseCount;
   apexError;
 
   @wire(getRecord, { recordId: "$recordId", fields: ACCOUNT_FIELDS })
   account;
 
-  @wire(getOpenCaseCount, { accountId: "$recordId" })
-  wiredOpenCaseCount({ data, error }) {
+  @wire(getEscalatedCaseCount, { accountId: "$recordId" })
+  wiredEscalatedCaseCount({ data, error }) {
     if (data !== undefined) {
-      this.openCaseCount = data;
+      this.escalatedCaseCount = data;
       this.apexError = undefined;
     } else if (error) {
-      this.openCaseCount = undefined;
+      this.escalatedCaseCount = undefined;
       this.apexError = error;
     }
   }
@@ -80,17 +80,24 @@ export default class AccountHealthSummary extends LightningElement {
     return "error";
   }
 
-  get hasOpenCaseCount() {
-    return this.openCaseCount !== undefined && !this.apexError;
+  get hasEscalatedCaseCount() {
+    return this.escalatedCaseCount !== undefined && !this.apexError;
   }
 
-  get openCaseLabel() {
-    if (!this.hasOpenCaseCount) {
+  get escalatedCaseLabel() {
+    if (!this.hasEscalatedCaseCount) {
       return "—";
     }
-    return this.openCaseCount === 1
-      ? "1 open case"
-      : `${this.openCaseCount} open cases`;
+    if (this.escalatedCaseCount === 0) {
+      return "No escalated cases";
+    }
+    return this.escalatedCaseCount === 1
+      ? "1 escalated case"
+      : `${this.escalatedCaseCount} escalated cases`;
+  }
+
+  get showEscalationWarning() {
+    return this.hasEscalatedCaseCount && this.escalatedCaseCount > 0;
   }
 
   get isLoading() {
@@ -106,7 +113,9 @@ export default class AccountHealthSummary extends LightningElement {
       return this.account.error.body?.message || "Unable to load account.";
     }
     if (this.apexError) {
-      return this.apexError.body?.message || "Unable to load case count.";
+      return (
+        this.apexError.body?.message || "Unable to load escalated case count."
+      );
     }
     return "";
   }

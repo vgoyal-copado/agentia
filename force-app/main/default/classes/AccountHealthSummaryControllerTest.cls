@@ -1,48 +1,64 @@
 @IsTest
 private class AccountHealthSummaryControllerTest {
   @IsTest
-  static void getOpenCaseCount_returnsZeroWhenNoCases() {
-    Account acct = new Account(Name = 'Health Summary Test Account');
+  static void getEscalatedCaseCount_returnsZeroWhenNoCases() {
+    Account acct = new Account(Name = 'Escalation Test Account');
     insert acct;
 
     Test.startTest();
-    Integer openCaseCount = AccountHealthSummaryController.getOpenCaseCount(
+    Integer escalatedCount = AccountHealthSummaryController.getEscalatedCaseCount(
       acct.Id
     );
     Test.stopTest();
 
-    System.assertEquals(0, openCaseCount, 'Expected no open cases');
+    System.assertEquals(0, escalatedCount, 'Expected no escalated cases');
   }
 
   @IsTest
-  static void getOpenCaseCount_countsOnlyOpenCases() {
-    Account acct = new Account(Name = 'Health Summary Case Account');
+  static void getEscalatedCaseCount_countsOnlyHighPriorityOpenCases() {
+    Account acct = new Account(Name = 'Escalation Case Account');
     insert acct;
 
-    insert new Case(Subject = 'Open Case', Status = 'New', AccountId = acct.Id);
     insert new Case(
-      Subject = 'Closed Case',
+      Subject = 'High Priority Open',
+      Status = 'New',
+      Priority = 'High',
+      AccountId = acct.Id
+    );
+    insert new Case(
+      Subject = 'Low Priority Open',
+      Status = 'New',
+      Priority = 'Low',
+      AccountId = acct.Id
+    );
+    insert new Case(
+      Subject = 'High Priority Closed',
       Status = 'Closed',
+      Priority = 'High',
       AccountId = acct.Id
     );
 
     Test.startTest();
-    Integer openCaseCount = AccountHealthSummaryController.getOpenCaseCount(
+    Integer escalatedCount = AccountHealthSummaryController.getEscalatedCaseCount(
       acct.Id
     );
     Test.stopTest();
 
-    System.assertEquals(1, openCaseCount, 'Expected one open case');
+    System.assertEquals(
+      1,
+      escalatedCount,
+      'Expected one high-priority open case'
+    );
   }
 
   @IsTest
-  static void getOpenCaseCount_returnsZeroForNullAccountId() {
+  static void getEscalatedCaseCount_returnsZeroForNullAccountId() {
     Test.startTest();
-    Integer openCaseCount = AccountHealthSummaryController.getOpenCaseCount(
+    Integer escalatedCount = AccountHealthSummaryController.getEscalatedCaseCount(
       null
     );
     Test.stopTest();
 
-    System.assertEquals(0, openCaseCount, 'Expected zero for null account');
+    System.assertEquals(0, escalatedCount, 'Expected zero for null account');
   }
 }

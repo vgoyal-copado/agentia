@@ -1,6 +1,6 @@
 public with sharing class AccountHealthSummaryController {
   @AuraEnabled(cacheable=true)
-  public static Integer getOpenCaseCount(Id accountId) {
+  public static Integer getEscalatedCaseCount(Id accountId) {
     if (accountId == null) {
       return 0;
     }
@@ -8,7 +8,7 @@ public with sharing class AccountHealthSummaryController {
     return [
       SELECT COUNT()
       FROM Case
-      WHERE AccountId = :accountId AND IsClosed = FALSE
+      WHERE AccountId = :accountId AND IsClosed = FALSE AND Priority = 'High'
     ];
   }
 }

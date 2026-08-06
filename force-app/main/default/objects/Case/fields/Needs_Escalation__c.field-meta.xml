@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Needs_Escalation__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description
+  >Indicates whether the Case requires leadership attention due to escalation.</description>
+    <inlineHelpText
+  >Check this box when the Case needs leadership review or escalation.</inlineHelpText>
+    <label>Needs Escalation</label>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

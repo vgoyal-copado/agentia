@@ -1,0 +1,38 @@
+<template>
+  <lightning-card title="Case Escalation Summary" icon-name="standard:case">
+    <template lwc:if={isLoading}>
+      <div class="slds-p-around_medium slds-align_absolute-center">
+        <lightning-spinner
+          alternative-text="Loading"
+          size="small"
+        ></lightning-spinner>
+      </div>
+    </template>
+
+    <template lwc:elseif={hasError}>
+      <div class="slds-p-around_medium">
+        <div class="slds-text-color_error">{errorMessage}</div>
+      </div>
+    </template>
+
+    <template lwc:elseif={showWarningBanner}>
+      <div class="slds-p-around_medium">
+        <div
+          class="slds-notify slds-notify_alert slds-alert_warning"
+          role="alert"
+        >
+          <span class="slds-assistive-text">warning</span>
+          <h2>This case requires leadership attention.</h2>
+        </div>
+      </div>
+    </template>
+
+    <template lwc:else>
+      <div
+        class="slds-p-around_medium slds-text-align_center slds-text-color_weak"
+      >
+        <p>No escalation needed at this time.</p>
+      </div>
+    </template>
+  </lightning-card>
+</template>

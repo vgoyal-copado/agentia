@@ -1,18 +1,14 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Needs_Escalation__c</fullName>
-    <description>Flags open High or Critical Cases that have not been updated in 48 or more hours.</description>
-    <formula>AND(
-NOT(IsClosed),
-OR(
-ISPICKVAL(Priority, &apos;High&apos;),
-ISPICKVAL(Priority, &apos;Critical&apos;)
-),
-(NOW() - LastModifiedDate) * 24 &gt;= 48
-)</formula>
-    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
-    <inlineHelpText>Checked when this open Case has High or Critical priority and has not been updated in 48 or more hours.</inlineHelpText>
+    <defaultValue>false</defaultValue>
+    <description
+  >Indicates whether the Case requires leadership attention due to escalation.</description>
+    <inlineHelpText
+  >Check this box when the Case needs leadership review or escalation.</inlineHelpText>
     <label>Needs Escalation</label>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
     <trackTrending>false</trackTrending>
     <type>Checkbox</type>
 </CustomField>

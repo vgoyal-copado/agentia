@@ -1,0 +1,53 @@
+<template>
+  <lightning-card title="Account Health Summary" icon-name="standard:account">
+    <template lwc:if={isLoading}>
+      <div class="slds-p-around_medium slds-align_absolute-center">
+        <lightning-spinner
+          alternative-text="Loading"
+          size="small"
+        ></lightning-spinner>
+      </div>
+    </template>
+
+    <template lwc:elseif={hasError}>
+      <div class="slds-p-around_medium">
+        <div class="slds-text-color_error">{errorMessage}</div>
+      </div>
+    </template>
+
+    <template lwc:else>
+      <div class="slds-p-around_medium slds-grid slds-wrap slds-gutters_small">
+        <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+          <p class="slds-text-title_caps slds-text-color_weak">Account</p>
+          <p class="slds-text-heading_small">{accountName}</p>
+        </div>
+
+        <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+          <p class="slds-text-title_caps slds-text-color_weak">Customer Tier</p>
+          <template lwc:if={hasTier}>
+            <lightning-badge
+              label={customerTier}
+              variant={tierVariant}
+            ></lightning-badge>
+          </template>
+          <template lwc:else>
+            <p class="slds-text-body_regular">Not set</p>
+          </template>
+        </div>
+
+        <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+          <p class="slds-text-title_caps slds-text-color_weak">Health Score</p>
+          <lightning-badge
+            label={healthScoreLabel}
+            variant={healthVariant}
+          ></lightning-badge>
+        </div>
+
+        <div class="slds-col slds-size_1-of-1">
+          <p class="slds-text-title_caps slds-text-color_weak">Open Cases</p>
+          <p class="slds-text-body_regular">{openCaseLabel}</p>
+        </div>
+      </div>
+    </template>
+  </lightning-card>
+</template>

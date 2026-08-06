@@ -121,15 +121,32 @@ Use `--metadata` or a manifest when the change set is narrow. Fix validation err
 
 **Prerequisites:** [Validate deploy to source org](#validate-deploy-to-source-org) must succeed first. Stage changes after validation and before running this check — do not commit first.
 
+**Why not `--from-changes` before commit?** Agentia's `--from-changes` runs `git diff --name-only <base-ref>...HEAD`, which only sees **committed** branch changes. Staged, unstaged, and untracked files are ignored. Use the helper below instead.
+
 **Resolve destination org:** from the pipeline connection whose source environment matches the story's source org (`defaults.environment` or `context.sourceOrgId`):
 
 ```sh
 agentia pipeline connection list --pipeline-id <context.pipelineId> --json
 ```
 
-Use `destinationEnvironment.orgId` as `targetOrgId` (e.g. dev1 → Staging).
+Use `destinationEnvironment.orgId` as `targetOrgId` (e.g. dev1 → Staging). The helper script resolves this automatically from `.agentia/config.json`.
 
-**How** (CLI; MCP lacks `--from-changes` and `--target-org-id`):
+**How** (pre-commit; staged + unstaged + untracked vs base branch):
+
+```sh
+node scripts/agentia/dependency-check.mjs --json
+```
+
+The script:
+
+1. Reads `pipelineId`, `sourceOrgId`, and `sourceCredential` from `.agentia/config.json`.
+2. Collects local changes against `origin/<lastBaseBranch>` (override with `--base-ref`).
+3. Maps changed paths under `force-app/` to metadata selections (Apex, LWC, FlexiPage, etc.).
+4. Builds a `--stdin` request and calls `agentia metadata dependency list`.
+
+Use `--dry-run` to inspect the generated JSON without calling Agentia. Pass `--target-org-id <id>` to override auto-resolution.
+
+**After commit** (optional; same selections, committed-only diff):
 
 ```sh
 agentia metadata dependency list \
@@ -192,15 +209,15 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 
 **Use instead (Agentia MCP or** `agentia … --json`**):**
 
-| Need                              | Agentia command / MCP tool                                                                                                                                                                          |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Story specs & acceptance criteria | `agentia_work_get` / `agentia work get <id> --json`                                                                                                                                                 |
-| Create or update a story          | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                                                                                                  |
-| Branch & active story             | `agentia_work_set` / `agentia work set <id> --json`                                                                                                                                                 |
-| Metadata in org / repo            | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json`                                                                            |
-| Validate deploy to source org     | `sf project deploy start --dry-run` — required before staging and commit; no actual deploy                                                                                                          |
-| Missing dependencies              | `agentia metadata dependency list --from-changes --target-org-id … --json` (after validation and staging, before commit); retrieve via `agentia_metadata_content_get`, stage, and include in commit |
-| Pipeline destination org          | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                                                                                                      |
-| Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                                                  |
+| Need                              | Agentia command / MCP tool                                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Story specs & acceptance criteria | `agentia_work_get` / `agentia work get <id> --json`                                                                                                                      |
+| Create or update a story          | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                                                                       |
+| Branch & active story             | `agentia_work_set` / `agentia work set <id> --json`                                                                                                                      |
+| Metadata in org / repo            | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json`                                                 |
+| Validate deploy to source org     | `sf project deploy start --dry-run` — required before staging and commit; no actual deploy                                                                               |
+| Missing dependencies              | `node scripts/agentia/dependency-check.mjs --json` (pre-commit, after validation and staging); retrieve via `agentia_metadata_content_get`, stage, and include in commit |
+| Pipeline destination org          | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                                                                           |
+| Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                       |
 
-Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, run cross-org dependency analysis (before commit), retrieve missing metadata via Agentia and include it in the commit, and push through Agentia. Use `sf project deploy start --dry-run` only — no other `sf` commands, and never run an actual deploy.
+Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, run cross-org dependency analysis with `node scripts/agentia/dependency-check.mjs --json` (before commit), retrieve missing metadata via Agentia and include it in the commit, and push through Agentia. Use `sf project deploy start --dry-run` only — no other `sf` commands, and never run an actual deploy.

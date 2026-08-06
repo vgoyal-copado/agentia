@@ -68,13 +68,14 @@ Cursor MCP (start from repo root):
 3. Implement Salesforce metadata under `force-app/`. Author files directly or retrieve existing org metadata via Agentia — never use `sf template generate` or other `sf` commands to scaffold metadata.
 4. **Validate deploy to source org** — once all changes are ready, dry-run against the source org before committing. See [Validate deploy to source org](#validate-deploy-to-source-org).
 5. **Stage changes** — after dry-run succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
-6. **Exit gate — dependency check** (once, after staging, before commit/push/submit/done or reporting complete): see [Metadata dependencies](#metadata-dependencies).
-7. Commit only when the user asks — after validation and dependency gate pass (including any retrieved dependencies).
-8. `agentia_work_push` / `agentia work push` — only after dependency gate passes.
+6. **Exit gate — dependency resolve** (mandatory, after staging, before commit/push/submit/done): run `node scripts/agentia/dependency-check.mjs --resolve --json` until exit 0. See [Metadata dependencies](#metadata-dependencies).
+7. **Re-validate after retrieve** — if `--resolve` retrieved new files, re-run dry-run, stage, and re-run `--resolve` until exit 0.
+8. Commit only when the user asks — after validation and dependency gate pass (including retrieved dependencies).
+9. `agentia_work_push` / `agentia work push` — only after `dependency-check.mjs --resolve` exits 0.
 
 ### 5. Submit, done, monitor
 
-1. Confirm dry-run validation and dependency check already passed (re-run only if changes or retrieved deps changed).
+1. Confirm dry-run validation and `dependency-check.mjs --resolve` already passed (re-run only if changes or retrieved deps changed).
 2. `agentia_work_status` / `agentia work status` — story + related jobs.
 3. `agentia work submit` — validation (`validate=true`). **Confirm with user first.**
 4. On failure: `agentia job list` → `job get` → `job log get`.
@@ -111,42 +112,53 @@ Cursor MCP (start from repo root):
 sf project deploy start --dry-run --source-dir force-app --target-org nvijaydxdevhub_dev --wait 30 --json
 ```
 
-Use `--metadata` or a manifest when the change set is narrow. Fix validation errors before proceeding. After dry-run succeeds, stage changes (`git add`) and run the dependency check — do not commit until the dependency gate passes.
+Use `--metadata` or a manifest when the change set is narrow. Fix validation errors before proceeding. After dry-run succeeds, stage changes (`git add`) and run `node scripts/agentia/dependency-check.mjs --resolve --json` — do not commit until it exits 0.
 
 ---
 
 ## Metadata dependencies
 
-**When:** once after changes are **validated** (dry-run) and **staged** (`git add`), and before commit/push/submit/done. Not at entry.
+**Source of truth:** `agentia metadata dependency list` only. The helper script maps local git changes to metadata selections, calls Agentia, and (with `--resolve`) retrieves every retrievable dependency Agentia reports as `"s": "MISSING"` in the next pipeline org. It does **not** infer dependencies from file contents.
 
-**Prerequisites:** [Validate deploy to source org](#validate-deploy-to-source-org) must succeed first. Stage changes after validation and before running this check — do not commit first.
+**When:** once after changes are **validated** (dry-run) and **staged** (`git add`), and before commit/push/submit/done.
 
-**Why not `--from-changes` before commit?** Agentia's `--from-changes` runs `git diff --name-only <base-ref>...HEAD`, which only sees **committed** branch changes. Staged, unstaged, and untracked files are ignored. Use the helper below instead.
+**Prerequisites:** [Validate deploy to source org](#validate-deploy-to-source-org) must succeed first. Stage changes after validation — do not commit first.
 
-**Resolve destination org:** from the pipeline connection whose source environment matches the story's source org (`defaults.environment` or `context.sourceOrgId`):
+**Why not `--from-changes` before commit?** Agentia's `--from-changes` only sees **committed** branch changes. Staged, unstaged, and untracked files are ignored. Use the helper script instead.
+
+**Resolve destination org:** from the pipeline connection whose source environment matches the story's source org:
 
 ```sh
 agentia pipeline connection list --pipeline-id <context.pipelineId> --json
 ```
 
-Use `destinationEnvironment.orgId` as `targetOrgId` (e.g. dev1 → Staging). The helper script resolves this automatically from `.agentia/config.json`.
+Use `destinationEnvironment.orgId` as `targetOrgId` (e.g. dev1 → Staging). The script resolves this from `.agentia/config.json`.
 
-**How** (pre-commit; staged + unstaged + untracked vs base branch):
+### Mandatory gate (always run with --resolve)
 
 ```sh
-node scripts/agentia/dependency-check.mjs --json
+node scripts/agentia/dependency-check.mjs --resolve --json
 ```
+
+Must **exit 0** before commit, push, submit, or done.
 
 The script:
 
-1. Reads `pipelineId`, `sourceOrgId`, and `sourceCredential` from `.agentia/config.json`.
-2. Collects local changes against `origin/<lastBaseBranch>` (override with `--base-ref`).
-3. Maps changed paths under `force-app/` to metadata selections (Apex, LWC, FlexiPage, etc.).
-4. Builds a `--stdin` request and calls `agentia metadata dependency list`.
+1. Maps local git changes (staged + unstaged + untracked vs `origin/<lastBaseBranch>`) to metadata selections.
+2. Calls **`agentia metadata dependency list --stdin`** (`retrieveMode: diff_only`, source org vs destination org).
+3. Retrieves every retrievable item Agentia reports with `"s": "MISSING"` from the source org into `force-app/`.
+4. Stages retrieved files, expands selections from Agentia output, and repeats until no retrievable gaps remain.
 
-Use `--dry-run` to inspect the generated JSON without calling Agentia. Pass `--target-org-id <id>` to override auto-resolution.
+**After retrieve:** re-run [Validate deploy to source org](#validate-deploy-to-source-org) if needed, `git add`, then re-run `--resolve` until exit 0.
 
-**After commit** (optional; same selections, committed-only diff):
+### Inspect only (no retrieve)
+
+```sh
+node scripts/agentia/dependency-check.mjs --json
+node scripts/agentia/dependency-check.mjs --dry-run
+```
+
+**After commit** (optional):
 
 ```sh
 agentia metadata dependency list \
@@ -158,19 +170,18 @@ agentia metadata dependency list \
   --json
 ```
 
-This compares **source org** against **destination org** (next environment in the pipeline).
+### Ignored false positives
 
-**If missing deps:**
+Do not retrieve or block on Agentia noise:
 
-1. List every missing dependency reported.
-2. Retrieve each into `force-app/` via `agentia_metadata_content_get` / `agentia metadata content get --json` (source org).
-3. Re-run dry-run validation if retrieved files affect deployability.
-4. Stage all retrieved files (`git add`) alongside story changes.
-5. Re-run dependency analysis until no retrievable gaps remain.
+- Platform FlexiPage components (`flexipage:tabset`, `flexipage:column`, …)
+- Standard-object `CustomObject` parents (`Case`, `Account`, …) when deploying custom **fields**
 
-**Always include retrieved dependency files in the commit** — they are part of the story change set, not optional add-ons. Do not push/submit/done with org-only deps unless the user explicitly accepts documented gaps.
+### Manual fallback
 
-**Common misses:** Apex referenced by LWC/controllers, custom metadata + Default records, named/external credentials, permission sets and labels referenced by UI.
+When Agentia reports a missing dependency that auto-retrieve does not support, retrieve via `agentia metadata content get`, stage, re-validate, and re-run `--resolve`.
+
+**Always include retrieved dependency files in the commit** — they are part of the story change set.
 
 ---
 
@@ -209,15 +220,15 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 
 **Use instead (Agentia MCP or** `agentia … --json`**):**
 
-| Need                              | Agentia command / MCP tool                                                                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Story specs & acceptance criteria | `agentia_work_get` / `agentia work get <id> --json`                                                                                                                      |
-| Create or update a story          | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                                                                       |
-| Branch & active story             | `agentia_work_set` / `agentia work set <id> --json`                                                                                                                      |
-| Metadata in org / repo            | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json`                                                 |
-| Validate deploy to source org     | `sf project deploy start --dry-run` — required before staging and commit; no actual deploy                                                                               |
-| Missing dependencies              | `node scripts/agentia/dependency-check.mjs --json` (pre-commit, after validation and staging); retrieve via `agentia_metadata_content_get`, stage, and include in commit |
-| Pipeline destination org          | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                                                                           |
-| Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                       |
+| Need                              | Agentia command / MCP tool                                                                                                                                                             |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Story specs & acceptance criteria | `agentia_work_get` / `agentia work get <id> --json`                                                                                                                                    |
+| Create or update a story          | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                                                                                     |
+| Branch & active story             | `agentia_work_set` / `agentia work set <id> --json`                                                                                                                                    |
+| Metadata in org / repo            | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json`                                                               |
+| Validate deploy to source org     | `sf project deploy start --dry-run` — required before staging and commit; no actual deploy                                                                                             |
+| Missing dependencies              | `node scripts/agentia/dependency-check.mjs --resolve --json` (mandatory gate); inspect with `--json` only; manual retrieve via `agentia metadata content get` when auto-retrieve fails |
+| Pipeline destination org          | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                                                                                         |
+| Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                                     |
 
-Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, run cross-org dependency analysis with `node scripts/agentia/dependency-check.mjs --json` (before commit), retrieve missing metadata via Agentia and include it in the commit, and push through Agentia. Use `sf project deploy start --dry-run` only — no other `sf` commands, and never run an actual deploy.
+Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, run `node scripts/agentia/dependency-check.mjs --resolve --json` until exit 0, re-validate if deps were retrieved, and push through Agentia. Use `sf project deploy start --dry-run` only — no other `sf` commands, and never run an actual deploy.

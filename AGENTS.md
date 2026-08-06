@@ -73,15 +73,17 @@ Cursor MCP (start from repo root):
 3. Implement Salesforce metadata under `force-app/`. Author files directly or retrieve existing org metadata via Agentia — never use `sf template generate` or other `sf` commands to scaffold metadata.
 4. **Validate deploy to source org** — once all changes are ready, dry-run against the source org before committing. See [Validate deploy to source org](#validate-deploy-to-source-org).
 5. **Stage changes** — after dry-run succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
-6. **Exit gate — dependency resolve** (mandatory, after staging, before commit/push/submit/done): list dependencies with Agentia, retrieve any MISSING items from the source org, and repeat until no retrievable gaps remain. See [Metadata dependencies](#metadata-dependencies).
-7. **Re-validate after retrieve** — if dependency retrieve added new files, re-run dry-run, stage, and re-run dependency resolve until complete.
-8. **Deploy to source org** — after dependency resolve and final dry-run validation pass, run an actual deploy to the source org. See [Deploy to source org](#deploy-to-source-org).
-9. Commit only when the user asks — after validation, dependency gate pass (including retrieved dependencies), and source-org deploy succeed.
-10. `agentia_work_push` / `agentia work push` — only after dependency resolve and source-org deploy are complete.
+6. **Pre-deploy dependency resolve** (first pass) — list dependencies with Agentia, retrieve any MISSING items from the source org, and repeat until no retrievable gaps remain. See [Metadata dependencies](#metadata-dependencies). This pass catches FlexiPage and other deps Agentia can resolve from local metadata alone.
+7. **Re-validate after retrieve** — if dependency retrieve added new files, re-run dry-run, stage, and re-run pre-deploy dependency resolve until complete.
+8. **Deploy to source org** — after pre-deploy dependency resolve and final dry-run validation pass, run an actual deploy to the source org. See [Deploy to source org](#deploy-to-source-org).
+9. **Post-deploy dependency resolve** (mandatory, do not skip) — re-run dependency list **after** the source-org deploy succeeds. Deploying Apex/LWC into the org updates Agentia's index so references (e.g. `Case.Needs_Escalation__c` from Apex SOQL) surface as MISSING. Retrieve every retrievable MISSING item from the source org, write under `force-app/`, stage (`git add`), and repeat until only [ignored false positives](#ignored-false-positives) remain. **Without this pass, destination-org promotion can fail on missing metadata the story references but never retrieved locally.**
+10. **Re-validate after post-deploy retrieve** — if step 9 added files, re-run dry-run and re-run post-deploy dependency resolve until complete. No need to re-deploy to source org for metadata already present there (fields, etc.) — the goal is a complete local change set ready to commit.
+11. Commit only when the user asks — after both dependency passes (including all retrieved dependencies) and source-org deploy succeed.
+12. `agentia_work_push` / `agentia work push` — only after post-deploy dependency resolve and source-org deploy are complete.
 
 ### 5. Submit, done, monitor
 
-1. Confirm dry-run validation, dependency resolve, and source-org deploy already passed (re-run only if changes or retrieved deps changed).
+1. Confirm dry-run validation, pre- and post-deploy dependency resolve, and source-org deploy already passed (re-run only if changes or retrieved deps changed).
 2. `agentia_work_status` / `agentia work status` — story + related jobs.
 3. `agentia work submit` — validation (`validate=true`). **Confirm with user first.**
 4. On failure: `agentia job list` → `job get` → `job log get`.
@@ -118,17 +120,17 @@ Cursor MCP (start from repo root):
 sf project deploy start --dry-run --source-dir force-app --target-org nvijaydxdevhub_dev --wait 30 --json
 ```
 
-Prefer `--metadata` or a manifest when the change set is narrow — **do not** deploy all of `force-app/` if the story only touches a few components. A broad deploy overwrites org-only layout changes on files that were not retrieved first. Fix validation errors before proceeding. After dry-run succeeds, stage changes (`git add`) and run [Metadata dependencies](#metadata-dependencies) — do not commit until dependency resolve and source-org deploy are complete.
+Prefer `--metadata` or a manifest when the change set is narrow — **do not** deploy all of `force-app/` if the story only touches a few components. A broad deploy overwrites org-only layout changes on files that were not retrieved first. Fix validation errors before proceeding. After dry-run succeeds, stage changes (`git add`) and run pre-deploy [Metadata dependencies](#metadata-dependencies) — do not commit until both dependency passes and source-org deploy are complete.
 
 ---
 
 ## Deploy to source org
 
-**When:** at the end of the implementation process — after [Metadata dependencies](#metadata-dependencies) gate passes (including any retrieved MISSING items) and the final dry-run validation succeeds.
+**When:** after pre-deploy [Metadata dependencies](#metadata-dependencies) gate passes and the final dry-run validation succeeds — **before** the mandatory post-deploy dependency pass.
 
 **Target:** Development Org alias from the config table (`nvijaydxdevhub_dev`), which maps to `context.sourceOrgId`.
 
-**Prerequisite:** dry-run validation and dependency resolve must both pass first. If dependency retrieve added new files, re-run dry-run and dependency resolve before deploying.
+**Prerequisite:** dry-run validation and pre-deploy dependency resolve must both pass first. If dependency retrieve added new files, re-run dry-run and pre-deploy dependency resolve before deploying.
 
 **How:**
 
@@ -136,7 +138,9 @@ Prefer `--metadata` or a manifest when the change set is narrow — **do not** d
 sf project deploy start --source-dir force-app --target-org nvijaydxdevhub_dev --wait 30 --json
 ```
 
-Prefer `--metadata` or a manifest when the change set is narrow — same rule as dry-run: avoid full `--source-dir force-app` unless the story intentionally changes the whole tree. Fix deploy errors before proceeding to commit or push.
+Prefer `--metadata` or a manifest when the change set is narrow — same rule as dry-run: avoid full `--source-dir force-app` unless the story intentionally changes the whole tree. Fix deploy errors before proceeding.
+
+**After deploy:** immediately run the mandatory [post-deploy dependency resolve](#post-deploy-dependency-resolve-mandatory) pass. Do not commit or push until that pass completes.
 
 ---
 
@@ -144,9 +148,13 @@ Prefer `--metadata` or a manifest when the change set is narrow — same rule as
 
 **Source of truth:** `agentia metadata dependency list` only. Do **not** infer dependencies from file contents or use helper scripts.
 
-**When:** once after changes are **validated** (dry-run) and **staged** (`git add`), and before source-org deploy, commit/push/submit/done.
+**When:** run **twice** during implementation — a pre-deploy pass and a mandatory post-deploy pass (see below). Both are required before commit/push/submit/done.
 
 **Prerequisites:** [Validate deploy to source org](#validate-deploy-to-source-org) must succeed first. Stage changes after validation — do not commit first.
+
+### Why two passes?
+
+Agentia resolves some dependencies only after the component exists in the source org (common for **Apex → CustomField**, Apex class cross-refs, and LWC → Apex). A pre-deploy pass alone often reports an empty `d` array for new Apex classes and misses fields the code references. **Always re-run dependency list after source-org deploy** — that is when MISSING items like `Case.Needs_Escalation__c` appear and must be retrieved locally so destination-org promotion does not fail.
 
 **Resolve destination org:** from the pipeline connection whose source environment matches the story's source org:
 
@@ -211,7 +219,21 @@ agentia metadata content get \
 Write decoded content under `force-app/` (MCP: `agentia_metadata_content_get`). Stage retrieved files (`git add`).
 
 4. **Expand and repeat** — add retrieved components to `metadataSelections`, re-run dependency list, retrieve any new MISSING items, until no retrievable gaps remain.
-5. **Re-validate and deploy** — after the gate passes, re-run dry-run if any files were retrieved, then run [Deploy to source org](#deploy-to-source-org).
+5. **Re-validate and deploy** — after the pre-deploy gate passes, re-run dry-run if any files were retrieved, then run [Deploy to source org](#deploy-to-source-org).
+
+### Post-deploy dependency resolve (mandatory)
+
+**When:** immediately after [Deploy to source org](#deploy-to-source-org) succeeds — before commit, push, submit, or done.
+
+**Why:** the deploy puts new Apex/LWC into the org index; Agentia can then detect references that were invisible pre-deploy (e.g. custom fields in SOQL/DML, Apex class deps).
+
+**Steps:** repeat the [Mandatory gate](#mandatory-gate) procedure (steps 1–4) using the **full** staged change set (story components + anything retrieved in the pre-deploy pass). For each dependency under `d` with `"s": "MISSING"`:
+
+1. Retrieve from the source org via `agentia metadata content get` / `agentia_metadata_content_get`.
+2. Write decoded content under `force-app/`, stage (`git add`).
+3. Add retrieved components to `metadataSelections`, re-run dependency list, repeat until only [ignored false positives](#ignored-false-positives) remain.
+
+**Exit criteria:** no retrievable MISSING dependencies left; all retrieved files staged locally and ready to commit with the story. Re-run dry-run if post-deploy retrieve added new files. Destination-org promotion must not fail for metadata the story references — if it is in the org and referenced, it must be in the repo.
 
 **After commit** (optional inspect):
 
@@ -277,16 +299,16 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 
 **Use instead (Agentia MCP or** `agentia … --json`**):**
 
-| Need                              | Agentia command / MCP tool                                                                                                                                           |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Story specs & acceptance criteria | `agentia_work_get` / `agentia work get <id> --json`                                                                                                                  |
-| Create or update a story          | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                                                                   |
-| Branch & active story             | `agentia_work_set` / `agentia work set <id> --json`                                                                                                                  |
-| Metadata in org / repo            | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json`                                             |
-| Validate deploy to source org     | `sf project deploy start --dry-run` — required before staging and dependency resolve                                                                                 |
-| Deploy to source org              | `sf project deploy start` — required after dependency resolve and final dry-run validation                                                                           |
-| Missing dependencies              | `agentia_metadata_dependency_list` / `agentia metadata dependency list`; retrieve MISSING items with `agentia_metadata_content_get` / `agentia metadata content get` |
-| Pipeline destination org          | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                                                                       |
-| Push, submit, promote             | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                   |
+| Need                                      | Agentia command / MCP tool                                                                                                                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Story specs & acceptance criteria         | `agentia_work_get` / `agentia work get <id> --json`                                                                                                                                                                            |
+| Create or update a story                  | `agentia_work_create`, `agentia_work_update` / `agentia work create`, `agentia work update --json`                                                                                                                             |
+| Branch & active story                     | `agentia_work_set` / `agentia work set <id> --json`                                                                                                                                                                            |
+| Metadata in org / repo                    | `agentia_metadata_content_get`, `agentia_metadata_list` / `agentia metadata content get`, `agentia metadata list --json`                                                                                                       |
+| Validate deploy to source org             | `sf project deploy start --dry-run` — required before staging and dependency resolve                                                                                                                                           |
+| Deploy to source org                      | `sf project deploy start` — required after dependency resolve and final dry-run validation                                                                                                                                     |
+| Missing dependencies (pre- + post-deploy) | `agentia_metadata_dependency_list` / `agentia metadata dependency list` — run after staging **and again after source-org deploy**; retrieve MISSING items with `agentia_metadata_content_get` / `agentia metadata content get` |
+| Pipeline destination org                  | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                                                                                                                                 |
+| Push, submit, promote                     | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                                                                             |
 
-Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, resolve metadata dependencies via Agentia (`metadata dependency list` → retrieve MISSING items with `metadata content get`), re-validate if deps were retrieved, deploy to source org, and push through Agentia. Use `sf project deploy start --dry-run` and `sf project deploy start` only — no other `sf` commands.
+Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, run pre-deploy dependency resolve via Agentia (`metadata dependency list` → retrieve MISSING items with `metadata content get`), re-validate if deps were retrieved, deploy to source org, run **mandatory post-deploy dependency resolve** (same list → retrieve → stage loop until only false positives remain), re-validate if post-deploy retrieve added files, then push through Agentia. Use `sf project deploy start --dry-run` and `sf project deploy start` only — no other `sf` commands.

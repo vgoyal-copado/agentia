@@ -64,7 +64,12 @@ Cursor MCP (start from repo root):
 ### 4. Implement
 
 1. **Clean working tree**, then `agentia_work_set` / `agentia work set <id>` → branch `feature/<story-name>`.
-2. **Existing org metadata** — before creating or editing a file locally, check whether it already exists in the source org (`agentia_metadata_list` / `agentia metadata list --json`). If it does, retrieve it with `agentia_metadata_content_get` / `agentia metadata content get --json` and modify the retrieved copy. Do not recreate from scratch.
+2. **Existing org metadata (mandatory before any local edit)** — if metadata exists in the source org, treat the **org** as source of truth, not the repo copy.
+   - Check org presence (`agentia_metadata_list` / `agentia metadata list --json`).
+   - **Compare org vs repo** before editing (`agentia_metadata_content_compare` with `source: ENVIRONMENT` vs `targetSource: REPOSITORY`, or retrieve from org and diff locally).
+   - Retrieve with `agentia_metadata_content_get` / `agentia metadata content get --json`, write under `force-app/`, then apply story changes on that retrieved copy.
+   - **Never** edit a repo file blindly when the same component exists in the org — org-only changes (e.g. Lightning App Builder field additions) are lost on deploy.
+   - **FlexiPage / Lightning page layouts:** always retrieve + compare first. These are commonly edited in the org UI and drift from git.
 3. Implement Salesforce metadata under `force-app/`. Author files directly or retrieve existing org metadata via Agentia — never use `sf template generate` or other `sf` commands to scaffold metadata.
 4. **Validate deploy to source org** — once all changes are ready, dry-run against the source org before committing. See [Validate deploy to source org](#validate-deploy-to-source-org).
 5. **Stage changes** — after dry-run succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
@@ -113,7 +118,7 @@ Cursor MCP (start from repo root):
 sf project deploy start --dry-run --source-dir force-app --target-org nvijaydxdevhub_dev --wait 30 --json
 ```
 
-Use `--metadata` or a manifest when the change set is narrow. Fix validation errors before proceeding. After dry-run succeeds, stage changes (`git add`) and run [Metadata dependencies](#metadata-dependencies) — do not commit until dependency resolve and source-org deploy are complete.
+Prefer `--metadata` or a manifest when the change set is narrow — **do not** deploy all of `force-app/` if the story only touches a few components. A broad deploy overwrites org-only layout changes on files that were not retrieved first. Fix validation errors before proceeding. After dry-run succeeds, stage changes (`git add`) and run [Metadata dependencies](#metadata-dependencies) — do not commit until dependency resolve and source-org deploy are complete.
 
 ---
 
@@ -131,7 +136,7 @@ Use `--metadata` or a manifest when the change set is narrow. Fix validation err
 sf project deploy start --source-dir force-app --target-org nvijaydxdevhub_dev --wait 30 --json
 ```
 
-Use `--metadata` or a manifest when the change set is narrow. Fix deploy errors before proceeding to commit or push.
+Prefer `--metadata` or a manifest when the change set is narrow — same rule as dry-run: avoid full `--source-dir force-app` unless the story intentionally changes the whole tree. Fix deploy errors before proceeding to commit or push.
 
 ---
 

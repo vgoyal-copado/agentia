@@ -8,7 +8,20 @@ public with sharing class AccountHealthSummaryController {
     return [
       SELECT COUNT()
       FROM Case
-      WHERE AccountId = :accountId AND IsClosed = FALSE
+      WHERE AccountId = :accountId AND IsClosed = FALSE AND Status != 'On Hold'
+    ];
+  }
+
+  @AuraEnabled(cacheable=true)
+  public static Integer getClosedCaseCount(Id accountId) {
+    if (accountId == null) {
+      return 0;
+    }
+
+    return [
+      SELECT COUNT()
+      FROM Case
+      WHERE AccountId = :accountId AND IsClosed = TRUE
     ];
   }
 }

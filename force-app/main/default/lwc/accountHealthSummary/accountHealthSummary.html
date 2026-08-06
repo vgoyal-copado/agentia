@@ -23,6 +23,11 @@
         </div>
 
         <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+          <p class="slds-text-title_caps slds-text-color_weak">Account Type</p>
+          <p class="slds-text-body_regular">{accountTypeLabel}</p>
+        </div>
+
+        <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
           <p class="slds-text-title_caps slds-text-color_weak">Customer Tier</p>
           <template lwc:if={hasTier}>
             <lightning-badge
@@ -43,9 +48,25 @@
           ></lightning-badge>
         </div>
 
-        <div class="slds-col slds-size_1-of-1">
+        <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
           <p class="slds-text-title_caps slds-text-color_weak">Open Cases</p>
-          <p class="slds-text-body_regular">{openCaseLabel}</p>
+          <template lwc:if={showOpenCaseAlert}>
+            <div
+              class="slds-notify slds-notify_alert slds-alert_info slds-m-top_x-small"
+              role="alert"
+            >
+              <span class="slds-assistive-text">info</span>
+              <h2>{openCaseLabel}</h2>
+            </div>
+          </template>
+          <template lwc:else>
+            <p class="slds-text-body_regular">{openCaseLabel}</p>
+          </template>
+        </div>
+
+        <div class="slds-col slds-size_1-of-1">
+          <p class="slds-text-title_caps slds-text-color_weak">Closed Cases</p>
+          <p class="slds-text-body_regular">{closedCaseLabel}</p>
         </div>
       </div>
     </template>

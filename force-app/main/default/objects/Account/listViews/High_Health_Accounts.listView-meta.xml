@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>High_Health_Accounts</fullName>
+    <columns>ACCOUNT.NAME</columns>
+    <columns>Customer_Tier__c</columns>
+    <columns>Health_Score__c</columns>
+    <columns>ACCOUNT.TYPE</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Health_Score__c</field>
+        <operation>greaterOrEqual</operation>
+        <value>80</value>
+    </filters>
+    <label>High Health Accounts</label>
+</ListView>

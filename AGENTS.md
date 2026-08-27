@@ -312,3 +312,5 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 | Push, submit, promote                     | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                                                                             |
 
 Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, run pre-deploy dependency resolve via Agentia (`metadata dependency list` → retrieve MISSING items with `metadata content get`), re-validate if deps were retrieved, deploy to source org, run **mandatory post-deploy dependency resolve** (same list → retrieve → stage loop until only false positives remain), re-validate if post-deploy retrieve added files, then push through Agentia. Use `sf project deploy start --dry-run` and `sf project deploy start` only — no other `sf` commands.
+
+When asked to promote and deploy, if the feature branch doesn't have commits ahead of main, just push the branch without any new commit and then execute agentia work done

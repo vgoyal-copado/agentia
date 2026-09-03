@@ -67,13 +67,13 @@ Salesforce ALM via **Agentia** (Copado). Prefer **Agentia MCP tools** when avail
 3. Implement Salesforce metadata under `force-app/`. Author files directly or retrieve existing org metadata via Agentia — never use `sf template generate` or other `sf` commands to scaffold metadata.
 4. **Validate deploy to source org** — once all changes are ready, dry-run against the source org before committing. See [Validate deploy to source org](#validate-deploy-to-source-org).
 5. **Stage changes** — after dry-run succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
-6. Commit the changes using agentia work commit command
+6. Commit the changes using agentia cicd work commit command
 
 
 
 ### 5. Submit, done, monitor
 
-1. Confirm dry-run validation, pre- and post-deploy dependency resolve, and source-org deploy already passed (re-run only if changes or retrieved deps changed).
+1. Confirm dry-run validation, pre- and post-deploy dependency resolve, and source-org deploy already passed (re-run only if changes or retrieved deps changed).d
 2. `agentia_work_status` / `agentia work status` — story + related jobs.
 3. `agentia work submit` — validation (`validate=true`). **Confirm with user first.**
 4. On failure: `agentia job list` → `job get` → `job log get`.

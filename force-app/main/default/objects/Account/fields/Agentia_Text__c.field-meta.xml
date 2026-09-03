@@ -3,6 +3,7 @@
     <fullName>Agentia_Text__c</fullName>
     <description>Text field for Agentia Account values</description>
     <externalId>false</externalId>
+    <inlineHelpText>Sample help text</inlineHelpText>
     <label>Agentia Text</label>
     <length>255</length>
     <required>false</required>

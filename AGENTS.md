@@ -20,7 +20,8 @@ When implementing the US, do not check for data templates and related data unles
    - **Never** edit a repo file blindly when the same component exists in the org — org-only changes (e.g. Lightning App Builder field additions) are lost on deploy.
 2. Implement Salesforce metadata under `force-app/`. Author files directly or retrieve existing org metadata via Agentia — never use `sf template generate` or other `sf` commands to scaffold metadata.
 3. **Stage changes** — after dry-run succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
-4. Commit the changes using `agentia cicd work commit`.
+4. Commit the changes using `git commit`.
+5. Push the changes using `agentia cicd work push`
 
 ---
 

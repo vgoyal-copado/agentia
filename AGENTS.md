@@ -1,6 +1,7 @@
 # AGENTS.md — Development flow
 
 Use **Agentia CLI** for all ALM and metadata work. Do **not** use Agentia MCP.
+When implementing the US, do not check for data templates and related data unless specifically asked
 
 ---
 

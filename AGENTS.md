@@ -1,6 +1,6 @@
 # AGENTS.md — Development flow
 
-Salesforce ALM via **Agentia** (Copado). Prefer **Agentia MCP tools** when available. If MCP is unavailable, use `agentia … --json` as fallback — never substitute `sf data `* for Copado work items.
+Salesforce ALM via **Agentia** (Copado). Prefer **Agentia MCP tools** when available. If MCP is unavailable, use `agentia … --json` as fallback — never substitute `sf data` * for Copado work items.
 
 **Before any ALM or metadata command:** read `[.agentia/config.json](.agentia/config.json)` (`defaults` + `context`). Use those IDs; do not re-resolve unless auth or org setup changed.
 
@@ -8,45 +8,36 @@ Salesforce ALM via **Agentia** (Copado). Prefer **Agentia MCP tools** when avail
 
 ## Config not in `.agentia/config.json`
 
+
 | Item                    | Value                                   |
 | ----------------------- | --------------------------------------- |
-| CLI                     | `@copado/agentia-cli@0.26.0-alpha.0`    |
-| Copado username         | `nvijay@copado.com`                     |
-| Copado Org SF org alias | `AgentforceHeadless-Testbackend`        |
+| CLI                     | `@copado/agentia-cli@0.92.0-alpha.0`    |
+| Copado username         |                                         |
+| Copado Org SF org alias |                                         |
 | Base branch             | `main` (see `lastBaseBranch` in config) |
-| Development Org alias   | `nvijaydxdevhub_dev`                    |
+| Development Org alias   | `dev-vg`                                |
+
 
 **Gaps to fill in config when missing:**
 
 - `context.releaseId` — Copado project Releases tab, or `agentia project get <project-id> --json`
 - `context.recordType` — project settings, or copy from an existing story via `agentia work get <id> --json`
 
-**Human setup (not the agent):**
-
-```sh
-npm install -g @copado/agentia-cli@0.26.0-alpha.0
-agentia auth set --cicd <api-key> --region na   # or --custom-url
-```
-
-Cursor MCP (start from repo root):
-
-```json
-{
-  "mcpServers": {
-    "agentia": { "command": "agentia", "args": ["mcp", "start"] }
-  }
-}
-```
-
 ---
 
+
+
 ## Development flow
+
+
 
 ### 1. Orient
 
 1. Read `.agentia/config.json`.
 2. Confirm project defaults align (`agentia project default get --json`).
 3. Resolve empty `releaseId` / `recordType` in config if needed.
+
+
 
 ### 2. Create a user story
 
@@ -55,31 +46,30 @@ Cursor MCP (start from repo root):
 3. Never create Copado stories with `sf data create record`.
 4. If scope spans many metadata layers, create a parent/epic and propose child breakdown (see [Large stories](#large-stories)).
 
+
+
 ### 3. Understand a user story
 
 1. `agentia_work_get` / `agentia work get <id>` — read specs, acceptance criteria, env/pipeline context.
 2. Assess size before coding ([Large stories](#large-stories)).
 3. If the user asked to **implement**, continue to step 4.
 
+
+
 ### 4. Implement
 
-1. **Clean working tree**, then `agentia_work_set` / `agentia work set <id>` → branch `feature/<story-name>`.
+1. For all the implementations you do, use agentia cli and not agentia mcp
 2. **Existing org metadata (mandatory before any local edit)** — if metadata exists in the source org, treat the **org** as source of truth, not the repo copy.
-   - Check org presence (`agentia_metadata_list` / `agentia metadata list --json`).
-   - **Compare org vs repo** before editing (`agentia_metadata_content_compare` with `source: ENVIRONMENT` vs `targetSource: REPOSITORY`, or retrieve from org and diff locally).
-   - Retrieve with `agentia_metadata_content_get` / `agentia metadata content get --json`, write under `force-app/`, then apply story changes on that retrieved copy.
-   - **Never** edit a repo file blindly when the same component exists in the org — org-only changes (e.g. Lightning App Builder field additions) are lost on deploy.
-   - **FlexiPage / Lightning page layouts:** always retrieve + compare first. These are commonly edited in the org UI and drift from git.
+  - Check org presence (`agentia_metadata_list` / `agentia metadata list --json`).
+  - Retrieve with `agentia_metadata_content_get` / `agentia metadata content get --json`, write under `force-app/`, then apply story changes on that retrieved copy.
+  - **Never** edit a repo file blindly when the same component exists in the org — org-only changes (e.g. Lightning App Builder field additions) are lost on deploy.
+  - **FlexiPage / Lightning page layouts:** always retrieve + compare first. These are commonly edited in the org UI and drift from git.
 3. Implement Salesforce metadata under `force-app/`. Author files directly or retrieve existing org metadata via Agentia — never use `sf template generate` or other `sf` commands to scaffold metadata.
 4. **Validate deploy to source org** — once all changes are ready, dry-run against the source org before committing. See [Validate deploy to source org](#validate-deploy-to-source-org).
 5. **Stage changes** — after dry-run succeeds, `git add` relevant files under `force-app/`. Do not commit yet.
-6. **Pre-deploy dependency resolve** (first pass) — list dependencies with Agentia, retrieve any MISSING items from the source org, and repeat until no retrievable gaps remain. See [Metadata dependencies](#metadata-dependencies). This pass catches FlexiPage and other deps Agentia can resolve from local metadata alone.
-7. **Re-validate after retrieve** — if dependency retrieve added new files, re-run dry-run, stage, and re-run pre-deploy dependency resolve until complete.
-8. **Deploy to source org** — after pre-deploy dependency resolve and final dry-run validation pass, run an actual deploy to the source org. See [Deploy to source org](#deploy-to-source-org).
-9. **Post-deploy dependency resolve** (mandatory, do not skip) — re-run dependency list **after** the source-org deploy succeeds. Deploying Apex/LWC into the org updates Agentia's index so references (e.g. `Case.Needs_Escalation__c` from Apex SOQL) surface as MISSING. Retrieve every retrievable MISSING item from the source org, write under `force-app/`, stage (`git add`), and repeat until only [ignored false positives](#ignored-false-positives) remain. **Without this pass, destination-org promotion can fail on missing metadata the story references but never retrieved locally.**
-10. **Re-validate after post-deploy retrieve** — if step 9 added files, re-run dry-run and re-run post-deploy dependency resolve until complete. No need to re-deploy to source org for metadata already present there (fields, etc.) — the goal is a complete local change set ready to commit.
-11. Commit only when the user asks — after both dependency passes (including all retrieved dependencies) and source-org deploy succeed.
-12. `agentia_work_push` / `agentia work push` — only after post-deploy dependency resolve and source-org deploy are complete.
+6. Commit the changes using agentia work commit command
+
+
 
 ### 5. Submit, done, monitor
 
@@ -91,9 +81,11 @@ Cursor MCP (start from repo root):
 
 ---
 
+
+
 ## Global rules
 
-- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` **only** for [source-org deploy validation](#validate-deploy-to-source-org) (`sf project deploy start --dry-run`) and [source-org deploy](#deploy-to-source-org) (`sf project deploy start`). No other `sf` commands — including `sf template generate`, `sf project retrieve start`, `sf data *`, or any other `sf` subcommand.
+- **Agentia only for ALM** — work items, push, submit, done, promotions. Use `sf` **only** for [source-org deploy validation](#validate-deploy-to-source-org) (`sf project deploy start --dry-run`) and [source-org deploy](#deploy-to-source-org) (`sf project deploy start`). No other `sf` commands — including `sf template generate`, `sf project retrieve start`, `sf data` *, or any other `sf` subcommand.
 - **Prefer org source of truth** — if metadata already exists in the source org, retrieve it via Agentia and edit that file; do not author a new local copy from scratch.
 - Pipeline/job commands need `organizationId` + `userId` from config `context`.
 - Metadata dependency/compare commands need `pipelineId`, `sourceOrgId`, `sourceCredential` from config, plus `targetOrgId` from the pipeline connection (see [Metadata dependencies](#metadata-dependencies)).
@@ -106,13 +98,15 @@ Cursor MCP (start from repo root):
 
 ---
 
+
+
 ## Validate deploy to source org
 
 **When:** once all implementation changes are ready — after coding, before staging, commit, and dependency analysis.
 
 **Target:** Development Org alias from the config table (`nvijaydxdevhub_dev`), which maps to `context.sourceOrgId`.
 
-**This is a permitted use of the `sf` CLI** (see also [Deploy to source org](#deploy-to-source-org)). **Dry-run only** — do not run an actual deploy in this step.
+**This is a permitted use of the** `sf` **CLI** (see also [Deploy to source org](#deploy-to-source-org)). **Dry-run only** — do not run an actual deploy in this step.
 
 **How:**
 
@@ -123,6 +117,8 @@ sf project deploy start --dry-run --source-dir force-app --target-org nvijaydxde
 Prefer `--metadata` or a manifest when the change set is narrow — **do not** deploy all of `force-app/` if the story only touches a few components. A broad deploy overwrites org-only layout changes on files that were not retrieved first. Fix validation errors before proceeding. After dry-run succeeds, stage changes (`git add`) and run pre-deploy [Metadata dependencies](#metadata-dependencies) — do not commit until both dependency passes and source-org deploy are complete.
 
 ---
+
+
 
 ## Deploy to source org
 
@@ -143,6 +139,8 @@ Prefer `--metadata` or a manifest when the change set is narrow — same rule as
 **After deploy:** immediately run the mandatory [post-deploy dependency resolve](#post-deploy-dependency-resolve-mandatory) pass. Do not commit or push until that pass completes.
 
 ---
+
+
 
 ## Metadata dependencies
 
@@ -203,7 +201,7 @@ agentia metadata dependency list \
   --json
 ```
 
-3. **Retrieve MISSING dependencies from the source org.** In the response, each dependency under `d` with `"s": "MISSING"` must be present locally before commit. If the metadata already exists in the source org but not in the repo, retrieve it with Agentia — never use `sf project retrieve start`:
+1. **Retrieve MISSING dependencies from the source org.** In the response, each dependency under `d` with `"s": "MISSING"` must be present locally before commit. If the metadata already exists in the source org but not in the repo, retrieve it with Agentia — never use `sf project retrieve start`:
 
 ```sh
 agentia metadata content get \
@@ -218,8 +216,10 @@ agentia metadata content get \
 
 Write decoded content under `force-app/` (MCP: `agentia_metadata_content_get`). Stage retrieved files (`git add`).
 
-4. **Expand and repeat** — add retrieved components to `metadataSelections`, re-run dependency list, retrieve any new MISSING items, until no retrievable gaps remain.
-5. **Re-validate and deploy** — after the pre-deploy gate passes, re-run dry-run if any files were retrieved, then run [Deploy to source org](#deploy-to-source-org).
+1. **Expand and repeat** — add retrieved components to `metadataSelections`, re-run dependency list, retrieve any new MISSING items, until no retrievable gaps remain.
+2. **Re-validate and deploy** — after the pre-deploy gate passes, re-run dry-run if any files were retrieved, then run [Deploy to source org](#deploy-to-source-org).
+
+
 
 ### Post-deploy dependency resolve (mandatory)
 
@@ -256,6 +256,8 @@ Do not retrieve or block on Agentia noise:
 - Platform FlexiPage components (`flexipage:tabset`, `flexipage:column`, …)
 - Standard-object `CustomObject` parents (`Case`, `Account`, …) when deploying custom **fields**
 
+
+
 ### Manual fallback
 
 When Agentia reports a missing dependency that is not auto-writable to the expected local path, retrieve via `agentia metadata content get`, place the file under `force-app/`, stage, re-validate, re-run dependency list, then deploy to source org.
@@ -264,9 +266,12 @@ When Agentia reports a missing dependency that is not auto-writable to the expec
 
 ---
 
+
+
 ## Large stories
 
 Treat as epic (stop and propose breakdown before coding) when **any** apply:
+
 
 | Signal              | Threshold                                                            |
 | ------------------- | -------------------------------------------------------------------- |
@@ -275,17 +280,22 @@ Treat as epic (stop and propose breakdown before coding) when **any** apply:
 | Acceptance criteria | ≥ 6 testable scenarios                                               |
 | Scope               | Multiple independent deliverables or strict cross-layer deploy order |
 
+
 When epic-sized: explain why, propose 3–8 ordered child stories (foundation first), ask whether to create children in Copado or implement one slice. Implement only after the user picks a scoped child (or explicitly overrides).
 
 Each child: 1–2 metadata layers, 2–4 acceptance criteria, 3–8 points, clear deploy boundary.
 
 ---
 
+
+
 ## Active work item
 
 Config tracks the last story: `lastWorkItemId`, `lastWorkItem`, `lastBaseBranch`. Prefer these when continuing work in the same repo session.
 
 ---
+
+
 
 ## Build stories with Agentia only
 
@@ -294,10 +304,11 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 **Do not use to build a story:**
 
 - **Git commit history** — no `git log`, `git show`, `git checkout <commit/branch> --`, or copying metadata from prior branches/commits to infer scope or reuse implementation.
-- `sf` **CLI** — no `sf` commands except `sf project deploy start --dry-run` for [source-org deploy validation](#validate-deploy-to-source-org) and `sf project deploy start` for [source-org deploy](#deploy-to-source-org). Never use `sf template generate`, `sf project retrieve start`, `sf data *`, or any other `sf` subcommand.
-- **Copado CLI** — no `copado `* commands for work items, metadata, pipeline actions, or story context.
+- `sf` **CLI** — no `sf` commands except `sf project deploy start --dry-run` for [source-org deploy validation](#validate-deploy-to-source-org) and `sf project deploy start` for [source-org deploy](#deploy-to-source-org). Never use `sf template generate`, `sf project retrieve start`, `sf data` *, or any other `sf` subcommand.
+- **Copado CLI** — no `copado` * commands for work items, metadata, pipeline actions, or story context.
 
 **Use instead (Agentia MCP or** `agentia … --json`**):**
+
 
 | Need                                      | Agentia command / MCP tool                                                                                                                                                                                                     |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -310,5 +321,6 @@ When creating, understanding, or implementing a user story, use **Agentia MCP to
 | Missing dependencies (pre- + post-deploy) | `agentia_metadata_dependency_list` / `agentia metadata dependency list` — run after staging **and again after source-org deploy**; retrieve MISSING items with `agentia_metadata_content_get` / `agentia metadata content get` |
 | Pipeline destination org                  | `agentia_pipeline_connection_list` / `agentia pipeline connection list --pipeline-id … --json`                                                                                                                                 |
 | Push, submit, promote                     | `agentia_work_push`, `agentia_work_submit`, `agentia_work_done` / matching `agentia work * --json`                                                                                                                             |
+
 
 Read the story from Agentia, implement from its specs, dry-run validate against source org, stage changes, run pre-deploy dependency resolve via Agentia (`metadata dependency list` → retrieve MISSING items with `metadata content get`), re-validate if deps were retrieved, deploy to source org, run **mandatory post-deploy dependency resolve** (same list → retrieve → stage loop until only false positives remain), re-validate if post-deploy retrieve added files, then push through Agentia. Use `sf project deploy start --dry-run` and `sf project deploy start` only — no other `sf` commands.
